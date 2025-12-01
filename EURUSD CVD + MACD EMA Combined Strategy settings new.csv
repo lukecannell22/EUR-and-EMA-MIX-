@@ -1,0 +1,120 @@
+Name,Value
+"__indicatorName","EURUSD CVD + MACD EMA Combined Strategy"
+"Asia Session","19:00"
+"London Kill Zone","02:00"
+"New York Kill Zone","09:00"
+"Show Session Boxes",true
+"Show Asia Lines",true
+"Show Session Range in Pips",true
+"Range Label Offset Multiplier",0.15
+"Show Average Daily Range (ADR)",true
+"ADR Length (Days)",21
+"Show Previous Day High/Low (YH/YL)",true
+"Previous Day Line Width",1
+"Show YH/YL Labels",true
+"Show Current Week High/Low (WH/WL)",true
+"Current Week Line Width",1
+"Show WH/WL Labels",true
+"Show Previous Week High/Low (PWH/PWL)",true
+"Previous Week Line Width",1
+"Show PWH/PWL Labels",true
+"Show CVD Indicator Pane",true
+"Use Custom CVD Timeframe",false
+"Enable Divergence Detector 1 (Fast)",true
+"Pivot Length 1",2
+"Enable Divergence Detector 2 (Medium)",true
+"Pivot Length 2",6
+"Enable Divergence Detector 3 (Slow)",false
+"Pivot Length 3",10
+"Enable Live Divergence Detection",true
+"Live Divergence Lookback",5
+"Live Divergence Line Width",1
+"Enable Classic Divergences",true
+"Enable Classic Bullish (Buy)",true
+"Enable Classic Bearish (Sell)",true
+"Classic Pivot Length",5
+"Classic Line Width",2
+"Classic Bullish Label","Classic Bull"
+"Classic Bearish Label","Classic Bear"
+"Enable Absorption Divergences",true
+"Enable Absorption Bullish (Buy)",true
+"Enable Absorption Bearish (Sell)",true
+"Absorption Pivot Length",5
+"Absorption Line Width",2
+"Absorption Bullish Label","Absorb Bull"
+"Absorption Bearish Label","Absorb Bear"
+"Enable Exhaustion Divergences",true
+"Enable Exhaustion Bullish (Buy)",true
+"Enable Exhaustion Bearish (Sell)",true
+"Exhaustion Pivot Length",5
+"Exhaustion Line Width",2
+"Exhaustion Bullish Label","Exhaust Bull"
+"Exhaustion Bearish Label","Exhaust Bear"
+"Show Divergence Labels",false
+"Show Divergence Lines",true
+"Stop Loss (Pips)",5
+"Risk % of Equity",1
+"TP1 (Pips)",10
+"Enable TP2",false
+"TP2 (Pips)",20
+"Enable TP3",false
+"TP3 (Pips)",30
+"TP1 Exit %",100
+"TP2 Exit %",25
+"Move to Breakeven after TP1",true
+"Move to Breakeven after TP2",false
+"Enable Full Entry Signal",false
+"Full Entry Label","Full Entry"
+"Require Liquidity Sweep",true
+"Require Divergence",true
+"Require Engulfing",true
+"Require Kill Zone",true
+"Require Day Filter",true
+"Enable Simple Entry Signal",false
+"Simple Entry Label","Simple Entry"
+"Use Bullish Engulfing",true
+"Use Bearish Engulfing",true
+"Use Bullish Pin Bar",false
+"Use Bearish Pin Bar",false
+"Show Engulfing Candles",true
+"Show Pin Bars",false
+"Custom Time Range","00:00"
+"Bullish Engulfing Label",
+"Bearish Engulfing Label",
+"Bullish Pin Bar Label",
+"Bearish Pin Bar Label",
+"Show Trade Lines (Entry/SL/TP)",true
+"Max Line Extension (Hours)",6
+"Asia High/Low Lines Width",2
+"Asia 50% Line Width",1
+"Asia Lines Extension (Hours)",7
+"Trade Lines Width",2
+"Enable London Kill Zone",true
+"London KZ Time Range","02:00"
+"Enable New York Kill Zone",false
+"NY KZ Time Range","09:00"
+"Monday",true
+"Tuesday",true
+"Wednesday",true
+"Thursday",true
+"Friday",true
+"Saturday",false
+"Sunday",true
+"Enable Tokyo Session",false
+"Tokyo Session","00:00"
+"Enable Sydney Session",false
+"Sydney Session","21:00"
+"Enable MACD + EMA Cross",true
+"Show EMA Lines",true
+"Show EMA Cloud",true
+"Show EMA Cross Marker",true
+"Show Buy/Sell Signals",true
+"Momentum EMA Period",8
+"Fast EMA Period",20
+"Slow EMA Period",50
+"Direction EMA Period",238
+"MACD Fast Length",12
+"MACD Slow Length",26
+"MACD Signal Smoothing",9
+"Enable MACD + EMA Entry Signal",true
+"Signal Label","Entry"
