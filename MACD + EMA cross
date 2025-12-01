@@ -1,0 +1,75 @@
+//@version=4
+
+//This is the coding to plot with the objectives detecting the possible trend change and pullback areas by utilizing moving averages and signals from MACD
+
+// Moving Averaged consists of 3 components, which are the Fast EMA, Slow EMA and Direction EMA. 
+//Once the Fast EMA crosses up the Slow EMA , it is considered as the Golden Cross which provides the Buy Signal. On the other hand, if the Slow EMA crosses down the Fast EMA , it is considered as a Sell Signal.
+//If the candle closes on top of the Direction EMA , then it is bullish and if the candle closes below the Direction EMA , it is bearish .
+//Moving averages confirms the buying / selling signals. 
+//The signals first came from the crossing of the MACD and Signal Lines. 
+//The Buy and Sell shapes will only appears when it is in a bullish trend provided by the MACD signal and when the Golden / Death Cross happens. 
+
+study(title="MACD + EMA Cross", shorttitle="MACD + EMA Cross", overlay=true)
+
+//Input
+
+//Momentum EMA
+momsource = input(defval = close, title="Momentum EMA")
+momlength = input(defval = 12, title = "Momentum EMA Period",minval = 1)
+emamom = ema(momsource,momlength)
+
+//Fast EMA
+fastsource = input(defval = close, title="Fast EMA")
+fastlength = input(defval = 20, title = "Fast EMA Period",minval = 1)
+emafast = ema(fastsource,fastlength)
+
+//Slow EMA
+slowsource = input(defval = close, title="Slow EMA")
+slowlength = input(defval = 50,title = "Slow EMA Period", minval = 1)
+emaslow = ema(slowsource,slowlength)
+
+//Direction EMA
+directionsource = input(defval = close, title="Direction")
+directionlength = input(defval = 200, title="Direction EMA Period",minval = 1)
+emadirection = ema(directionsource,directionlength)
+
+//Plotting
+mom = plot(emamom, title="EMA Momentum", color = color.fuchsia, linewidth = 2) // If rebounds here, it shows that the trend is high in momentum
+fast = plot(emafast, title="EMA Fast", color = color.green, linewidth = 2) // If rebounds here, it shows that the trend is normal in momentum
+long = plot(emaslow, title="EMA Slow", color = color.red, linewidth = 2) // If rebounds here, it shows that the trend is normal in momentum
+plot(cross(emafast, emaslow) ? emafast : na, style = plot.style_cross, color= color.fuchsia , linewidth = 3)
+emacross = cross(emafast,emaslow)
+
+plot(emadirection,color=color.blue, linewidth = 2, title = "EMA Direction")
+
+//Colouring Cloud
+cloudcolour = emafast > emaslow ? color.new(color.green, 80) : color.new(color.red, 80)
+
+fill(fast,long,color=cloudcolour)
+
+//MACD
+// Input MACD
+fast_length = input(title="Fast Length", type=input.integer, defval=12)
+slow_length = input(title="Slow Length", type=input.integer, defval=26)
+src = input(title="Source", type=input.source, defval=close)
+signal_length = input(title="Signal Smoothing", type=input.integer, minval = 1, maxval = 50, defval = 9)
+
+//Calculating
+fast_ma = ema(src, fast_length)
+slow_ma = ema(src, slow_length)
+macd = fast_ma - slow_ma
+signal = ema(macd, signal_length)
+hist = macd - signal
+
+//Summary
+goldenbuy = emacross and macd > signal
+goldensell = emacross and macd < signal
+
+//plotting signals
+
+plotshape(goldenbuy, title="Buy", text="B", color=color.yellow, style=shape.labelup, location=location.belowbar, size=size.small, textcolor=color.black, transp=0)
+plotshape(goldensell, title="Sell", text="S", color=color.orange, style=shape.labeldown, location=location.abovebar, size=size.small, textcolor=color.black, transp=0) 
+
+//Alert
+alertcondition(goldenbuy, title="Buy", message="Buy Signal for {{ticker}} : {{exchange}}")
+alertcondition(goldenbuy, title="Selly", message="Sell Signal for {{ticker}} : {{exchange}}")
