@@ -1,6 +1,13 @@
 //@version=6
 import TradingView/ta/8
-strategy("EURUSD CVD T3+ SCALPING", overlay=true, pyramiding=0, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, max_labels_count=500)
+strategy("EURUSD CVD + MACD EMA Combined Strategy", overlay=true, pyramiding=0, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, max_labels_count=500)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMBINED STRATEGY: EUR CVD Scanner + MACD + EMA Cross
+// This script combines:
+// 1. EUR CVD Scanner with session tracking, divergences, and trade management
+// 2. MACD + EMA Cross indicator with Golden/Death Cross signals
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SESSION CONFIGURATION
@@ -206,6 +213,46 @@ enableTokyo = input.bool(false, "Enable Tokyo Session", group=additionalSessionG
 tokyoSession = input.session("0000-0900", "Tokyo Session", group=additionalSessionGroup, tooltip="Define Tokyo session time range. Default: 12AM-9AM ET. Use the time picker to adjust session times")
 enableSydney = input.bool(false, "Enable Sydney Session", group=additionalSessionGroup, tooltip="Enable Sydney session box display (typically 9PM-6AM ET)")
 sydneySession = input.session("2100-0600", "Sydney Session", group=additionalSessionGroup, tooltip="Define Sydney session time range. Default: 9PM-6AM ET. Use the time picker to adjust session times")
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA CROSS SETTINGS (Combined from MACD + EMA Cross indicator)
+// ═══════════════════════════════════════════════════════════════════════════
+
+macdEmaGroup = "MACD + EMA Cross Settings"
+enableMacdEma = input.bool(true, "Enable MACD + EMA Cross", group=macdEmaGroup, tooltip="Enable the MACD + EMA Cross indicator overlay and signals")
+showEmaLines = input.bool(true, "Show EMA Lines", group=macdEmaGroup, tooltip="Display EMA lines on chart (Momentum, Fast, Slow, Direction)")
+showEmaCloud = input.bool(true, "Show EMA Cloud", group=macdEmaGroup, tooltip="Display cloud fill between Fast and Slow EMA")
+showMacdEmaCross = input.bool(true, "Show EMA Cross Marker", group=macdEmaGroup, tooltip="Display cross marker when Fast EMA crosses Slow EMA")
+showMacdEmaSignals = input.bool(true, "Show Buy/Sell Signals", group=macdEmaGroup, tooltip="Display B/S labels when Golden/Death Cross occurs with MACD confirmation")
+
+// EMA Settings
+emaSettingsGroup = "EMA Settings"
+emaMomLength = input.int(12, "Momentum EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Momentum EMA (default: 12)")
+emaFastLength = input.int(20, "Fast EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Fast EMA (default: 20)")
+emaSlowLength = input.int(50, "Slow EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Slow EMA (default: 50)")
+emaDirLength = input.int(200, "Direction EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Direction EMA (default: 200)")
+
+// EMA Colors
+emaColorsGroup = "EMA Colors"
+emaMomColor = input.color(color.fuchsia, "Momentum EMA Color", group=emaColorsGroup)
+emaFastColor = input.color(color.green, "Fast EMA Color", group=emaColorsGroup)
+emaSlowColor = input.color(color.red, "Slow EMA Color", group=emaColorsGroup)
+emaDirColor = input.color(color.blue, "Direction EMA Color", group=emaColorsGroup)
+emaCloudBullColor = input.color(color.new(color.green, 80), "Bullish Cloud Color", group=emaColorsGroup)
+emaCloudBearColor = input.color(color.new(color.red, 80), "Bearish Cloud Color", group=emaColorsGroup)
+
+// MACD Settings
+macdSettingsGroup = "MACD Settings"
+macdFastLength = input.int(12, "MACD Fast Length", minval=1, group=macdSettingsGroup, tooltip="Fast EMA period for MACD calculation (default: 12)")
+macdSlowLength = input.int(26, "MACD Slow Length", minval=1, group=macdSettingsGroup, tooltip="Slow EMA period for MACD calculation (default: 26)")
+macdSignalLength = input.int(9, "MACD Signal Smoothing", minval=1, maxval=50, group=macdSettingsGroup, tooltip="Signal line smoothing period (default: 9)")
+
+// MACD + EMA Entry Signal Settings
+macdEmaSignalGroup = "MACD + EMA Entry Signal"
+useSignal3 = input.bool(true, "Enable MACD + EMA Entry Signal", group=macdEmaSignalGroup, tooltip="Use MACD + EMA Golden/Death Cross as entry signal")
+signal3Label = input.string("MACD+EMA", "Signal Label", group=macdEmaSignalGroup, tooltip="Custom label for MACD + EMA entry signals")
+signal3RequireKillZone = input.bool(false, "Require Kill Zone", group=macdEmaSignalGroup, tooltip="MACD + EMA signal must occur during London or NY kill zone")
+signal3RequireDayFilter = input.bool(true, "Require Day Filter", group=macdEmaSignalGroup, tooltip="MACD + EMA signal only on enabled trading days")
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
@@ -647,6 +694,30 @@ if barstate.islast and cumVol == 0
     runtime.error("The data vendor doesn't provide volume data for this symbol.")
 
 // ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// EMA Calculations
+emaMom = ta.ema(close, emaMomLength)
+emaFast = ta.ema(close, emaFastLength)
+emaSlow = ta.ema(close, emaSlowLength)
+emaDirection = ta.ema(close, emaDirLength)
+
+// EMA Cross Detection
+emaCross = ta.cross(emaFast, emaSlow)
+
+// MACD Calculations
+macdFastMa = ta.ema(close, macdFastLength)
+macdSlowMa = ta.ema(close, macdSlowLength)
+macdLine = macdFastMa - macdSlowMa
+macdSignalLine = ta.ema(macdLine, macdSignalLength)
+macdHist = macdLine - macdSignalLine
+
+// Golden/Death Cross with MACD Confirmation
+goldenBuy = emaCross and macdLine > macdSignalLine
+goldenSell = emaCross and macdLine < macdSignalLine
+
+// ═══════════════════════════════════════════════════════════════════════════
 // PIVOT DETECTION (MULTIPLE TIMEFRAMES)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1073,13 +1144,32 @@ if signal2RequireDayFilter
 signal2Long = signal2LongConditions
 signal2Short = signal2ShortConditions
 
+// Modular MACD + EMA Entry Signal (Signal 3)
+signal3LongConditions = useSignal3 and enableMacdEma and goldenBuy
+signal3ShortConditions = useSignal3 and enableMacdEma and goldenSell
+
+if signal3RequireKillZone
+    signal3LongConditions := signal3LongConditions and inKillZone
+    signal3ShortConditions := signal3ShortConditions and inKillZone
+
+if signal3RequireDayFilter
+    signal3LongConditions := signal3LongConditions and tradingAllowed
+    signal3ShortConditions := signal3ShortConditions and tradingAllowed
+
+signal3Long = signal3LongConditions
+signal3Short = signal3ShortConditions
+
 // Combined entry signals
-longEntry = signal1Long or signal2Long
-shortEntry = signal1Short or signal2Short
+longEntry = signal1Long or signal2Long or signal3Long
+shortEntry = signal1Short or signal2Short or signal3Short
 
 // Debug: Show when Signal 2 entries are triggered
 plotshape(signal2Long, "Signal 2 Long", shape.triangleup, location.belowbar, color.new(color.lime, 0), size=size.tiny)
 plotshape(signal2Short, "Signal 2 Short", shape.triangledown, location.abovebar, color.new(color.red, 0), size=size.tiny)
+
+// Debug: Show when Signal 3 (MACD + EMA) entries are triggered
+plotshape(signal3Long and showMacdEmaSignals, "MACD+EMA Buy", shape.labelup, location.belowbar, color.yellow, text="B", textcolor=color.black, size=size.small)
+plotshape(signal3Short and showMacdEmaSignals, "MACD+EMA Sell", shape.labeldown, location.abovebar, color.orange, text="S", textcolor=color.black, size=size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TRADE MANAGEMENT
@@ -1321,6 +1411,23 @@ if showTradeLines and not na(entryLine)
 // VISUAL INDICATORS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA VISUAL INDICATORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Plot EMA lines if enabled
+emaMomPlot = plot(enableMacdEma and showEmaLines ? emaMom : na, title="EMA Momentum", color=emaMomColor, linewidth=2)
+emaFastPlot = plot(enableMacdEma and showEmaLines ? emaFast : na, title="EMA Fast", color=emaFastColor, linewidth=2)
+emaSlowPlot = plot(enableMacdEma and showEmaLines ? emaSlow : na, title="EMA Slow", color=emaSlowColor, linewidth=2)
+plot(enableMacdEma and showEmaLines ? emaDirection : na, title="EMA Direction", color=emaDirColor, linewidth=2)
+
+// Plot EMA Cross marker
+plot(enableMacdEma and showMacdEmaCross and emaCross ? emaFast : na, title="EMA Cross", style=plot.style_cross, color=color.fuchsia, linewidth=3)
+
+// EMA Cloud fill
+cloudColor = emaFast > emaSlow ? emaCloudBullColor : emaCloudBearColor
+fill(emaFastPlot, emaSlowPlot, color=enableMacdEma and showEmaCloud ? cloudColor : na, title="EMA Cloud")
+
 // Plot entry signals
 plotshape(longEntry, "Long Entry", shape.triangleup, location.belowbar, color.green, size=size.small)
 plotshape(shortEntry, "Short Entry", shape.triangledown, location.abovebar, color.red, size=size.small)
@@ -1380,3 +1487,13 @@ if showCVDPane
     
 // Note: Divergence lines are now drawn directly in the divergence detection logic above
 // and persist on historical data without deletion
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA ALERTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Alert conditions for MACD + EMA signals
+alertcondition(goldenBuy, title="MACD+EMA Buy Signal", message="MACD+EMA Buy Signal (Golden Cross) for {{ticker}} : {{exchange}}")
+alertcondition(goldenSell, title="MACD+EMA Sell Signal", message="MACD+EMA Sell Signal (Death Cross) for {{ticker}} : {{exchange}}")
+alertcondition(signal3Long, title="Signal 3 Long Entry", message="MACD+EMA Long Entry Signal for {{ticker}} : {{exchange}}")
+alertcondition(signal3Short, title="Signal 3 Short Entry", message="MACD+EMA Short Entry Signal for {{ticker}} : {{exchange}}")
