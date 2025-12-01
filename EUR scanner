@@ -34,11 +34,11 @@ previousDayWidth = input.int(1, "Previous Day Line Width", minval=1, maxval=5, g
 previousDayStyle = input.string("Dashed", "Previous Day Line Style", options=["Solid", "Dashed", "Dotted"], group=supportResistanceGroup, tooltip="Choose line style for previous day high/low")
 showPreviousDayLabels = input.bool(true, "Show YH/YL Labels", group=supportResistanceGroup, tooltip="Display 'YH' (Yesterday High) and 'YL' (Yesterday Low) labels on the lines")
 
-showCurrentWeekHL = input.bool(false, "Show Current Week High/Low (WH/WL)", group=supportResistanceGroup, tooltip="Display horizontal lines marking this week's current high and low levels")
+showCurrentWeekHL = input.bool(true, "Show Current Week High/Low (WH/WL)", group=supportResistanceGroup, tooltip="Display horizontal lines marking this week's current high and low levels")
 currentWeekColor = input.color(color.new(color.olive, 0), "Current Week Line Color", group=supportResistanceGroup, tooltip="Customize the color of current week high/low lines (default: olive)")
 currentWeekWidth = input.int(1, "Current Week Line Width", minval=1, maxval=5, group=supportResistanceGroup, tooltip="Set line thickness for current week lines (1=thin, 5=thick)")
 currentWeekStyle = input.string("Dashed", "Current Week Line Style", options=["Solid", "Dashed", "Dotted"], group=supportResistanceGroup, tooltip="Choose line style for current week high/low")
-showCurrentWeekLabels = input.bool(false, "Show WH/WL Labels", group=supportResistanceGroup, tooltip="Display 'WH' (Week High) and 'WL' (Week Low) labels on the lines")
+showCurrentWeekLabels = input.bool(true, "Show WH/WL Labels", group=supportResistanceGroup, tooltip="Display 'WH' (Week High) and 'WL' (Week Low) labels on the lines")
 
 showPreviousWeekHL = input.bool(true, "Show Previous Week High/Low (PWH/PWL)", group=supportResistanceGroup, tooltip="Display horizontal lines marking last week's high and low levels - important weekly support/resistance")
 previousWeekColor = input.color(color.orange, "Previous Week Line Color", group=supportResistanceGroup, tooltip="Customize the color of previous week high/low lines (default: orange)")
@@ -61,11 +61,11 @@ divergenceDetectorGroup = "Divergence Detectors"
 enableDivergence1 = input.bool(true, "Enable Divergence Detector 1 (Fast)", group=divergenceDetectorGroup, tooltip="Fast detector uses short pivot length for quicker divergence signals. Best for scalping and short-term trading")
 pivotLength1 = input.int(2, "Pivot Length 1", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 5 to 2 for faster detection (60% faster). Checks 2 bars left + 2 bars right = 5 bar window.")
 enableDivergence2 = input.bool(true, "Enable Divergence Detector 2 (Medium)", group=divergenceDetectorGroup, tooltip="Medium detector balances speed and reliability. Good for intraday trading")
-pivotLength2 = input.int(5, "Pivot Length 2", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 10 to 5 for faster detection (50% faster). Checks 5 bars left + 5 bars right = 11 bar window.")
+pivotLength2 = input.int(6, "Pivot Length 2", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 10 to 6 for faster detection. Checks 6 bars left + 6 bars right = 13 bar window.")
 enableDivergence3 = input.bool(false, "Enable Divergence Detector 3 (Slow)", group=divergenceDetectorGroup, tooltip="Slow detector uses longer pivot length for more reliable signals. Best for swing trading (disabled by default)")
 pivotLength3 = input.int(10, "Pivot Length 3", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 15 to 10 for faster detection (33% faster). Checks 10 bars left + 10 bars right = 21 bar window.")
 enableLiveDivergence = input.bool(true, "Enable Live Divergence Detection", group=divergenceDetectorGroup, tooltip="Show potential divergences in real-time without waiting for pivot confirmation. Purely visual - does not affect strategy entries.")
-liveDivLookback = input.int(20, "Live Divergence Lookback", minval=5, maxval=100, group=divergenceDetectorGroup, tooltip="Number of bars to look back for CVD/price extremes in live divergence detection. Higher values catch more divergences but may produce more signals.")
+liveDivLookback = input.int(5, "Live Divergence Lookback", minval=5, maxval=100, group=divergenceDetectorGroup, tooltip="Number of bars to look back for CVD/price extremes in live divergence detection. Higher values catch more divergences but may produce more signals.")
 
 // Live Divergence Display Settings
 liveDivDisplayGroup = "Live Divergence Display"
@@ -115,7 +115,7 @@ exhaustionBearLabel = input.string("Exhaust Bear", "Exhaustion Bearish Label", g
 
 // General Divergence Display
 divDisplayGroup = "Divergence Display"
-showDivergenceLabels = input.bool(true, "Show Divergence Labels", group=divDisplayGroup, tooltip="Display text labels on divergences (e.g., 'Classic Bull', 'Absorb Bear')")
+showDivergenceLabels = input.bool(false, "Show Divergence Labels", group=divDisplayGroup, tooltip="Display text labels on divergences (e.g., 'Classic Bull', 'Absorb Bear')")
 showDivergenceLines = input.bool(true, "Show Divergence Lines", group=divDisplayGroup, tooltip="Display lines connecting the divergence pivot points")
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -125,13 +125,13 @@ showDivergenceLines = input.bool(true, "Show Divergence Lines", group=divDisplay
 tradeGroup = "Trade Management"
 stopLossPips = input.float(5.0, "Stop Loss (Pips)", minval=0.1, step=0.1, group=tradeGroup, tooltip="Default stop loss distance in pips. Strategy calculates position size based on this and risk percent")
 riskPercent = input.float(1.0, "Risk % of Equity", minval=0.1, step=0.1, group=tradeGroup, tooltip="Percentage of equity to risk per trade")
-tp1Pips = input.float(15.0, "TP1 (Pips)", minval=1, step=1, group=tradeGroup)
-enableTP2 = input.bool(true, "Enable TP2", group=tradeGroup)
-tp2Pips = input.float(30.0, "TP2 (Pips)", minval=1, step=1, group=tradeGroup)
-enableTP3 = input.bool(true, "Enable TP3", group=tradeGroup)
-tp3Pips = input.float(50.0, "TP3 (Pips)", minval=1, step=1, group=tradeGroup)
-tp1Percent = input.float(33.0, "TP1 Exit %", minval=1, maxval=100, group=tradeGroup)
-tp2ExitPercent = input.float(50.0, "TP2 Exit %", minval=1, maxval=100, group=tradeGroup, tooltip="Percentage to exit at TP2 of remaining position after TP1")
+tp1Pips = input.float(10.0, "TP1 (Pips)", minval=1, step=1, group=tradeGroup)
+enableTP2 = input.bool(false, "Enable TP2", group=tradeGroup)
+tp2Pips = input.float(20.0, "TP2 (Pips)", minval=1, step=1, group=tradeGroup)
+enableTP3 = input.bool(false, "Enable TP3", group=tradeGroup)
+tp3Pips = input.float(30.0, "TP3 (Pips)", minval=1, step=1, group=tradeGroup)
+tp1Percent = input.float(100.0, "TP1 Exit %", minval=1, maxval=100, group=tradeGroup)
+tp2ExitPercent = input.float(25.0, "TP2 Exit %", minval=1, maxval=100, group=tradeGroup, tooltip="Percentage to exit at TP2 of remaining position after TP1")
 moveToBreakevenAfterTP1 = input.bool(true, "Move to Breakeven after TP1", group=tradeGroup)
 moveToBreakevenAfterTP2 = input.bool(false, "Move to Breakeven after TP2", group=tradeGroup)
 
@@ -140,7 +140,7 @@ moveToBreakevenAfterTP2 = input.bool(false, "Move to Breakeven after TP2", group
 // ═══════════════════════════════════════════════════════════════════════════
 
 signalGroup = "Entry Signals"
-useSignal1 = input.bool(true, "Enable Full Entry Signal", group=signalGroup, tooltip="Full entry requires all conditions: liquidity sweep, divergence, engulfing, kill zone, and day filter")
+useSignal1 = input.bool(false, "Enable Full Entry Signal", group=signalGroup, tooltip="Full entry requires all conditions: liquidity sweep, divergence, engulfing, kill zone, and day filter")
 signal1Label = input.string("Full Entry", "Full Entry Label", group=signalGroup, tooltip="Custom label text for full entry signals on the chart")
 signal1RequireLiqSweep = input.bool(true, "Require Liquidity Sweep", group=signalGroup, inline="full1", tooltip="Full entry must include Asia high/low liquidity sweep")
 signal1RequireDivergence = input.bool(true, "Require Divergence", group=signalGroup, inline="full2", tooltip="Full entry must include price/CVD divergence")
@@ -148,7 +148,7 @@ signal1RequireEngulfing = input.bool(true, "Require Engulfing", group=signalGrou
 signal1RequireKillZone = input.bool(true, "Require Kill Zone", group=signalGroup, inline="full4", tooltip="Full entry must occur during London or NY kill zone")
 signal1RequireDayFilter = input.bool(true, "Require Day Filter", group=signalGroup, inline="full5", tooltip="Full entry only on enabled trading days")
 
-useSignal2 = input.bool(true, "Enable Simple Entry Signal", group=signalGroup, tooltip="Simple entry requires fewer conditions: divergence, engulfing, kill zone, and day filter (no liquidity sweep required)")
+useSignal2 = input.bool(false, "Enable Simple Entry Signal", group=signalGroup, tooltip="Simple entry requires fewer conditions: divergence, engulfing, kill zone, and day filter (no liquidity sweep required)")
 signal2Label = input.string("Simple Entry", "Simple Entry Label", group=signalGroup, tooltip="Custom label text for simple entry signals on the chart")
 signal2RequireDivergence = input.bool(true, "Require Divergence", group=signalGroup, inline="simple1", tooltip="Simple entry must include price/CVD divergence")
 signal2RequireEngulfing = input.bool(true, "Require Engulfing", group=signalGroup, inline="simple2", tooltip="Simple entry must include engulfing/pin bar candle pattern")
@@ -159,22 +159,22 @@ candleGroup = "Candle Pattern Selection"
 candleMode = input.string("Engulfing Only", "Entry Candle Type", options=["Engulfing Only", "Pin Bar Only", "Both"], group=candleGroup, tooltip="Choose which candle patterns to use for entries: engulfing, pin bars, or both")
 useBullishEngulfing = input.bool(true, "Use Bullish Engulfing", group=candleGroup, tooltip="Enable bullish engulfing patterns (bullish candle fully engulfs previous bearish candle)")
 useBearishEngulfing = input.bool(true, "Use Bearish Engulfing", group=candleGroup, tooltip="Enable bearish engulfing patterns (bearish candle fully engulfs previous bullish candle)")
-useBullishPinBar = input.bool(true, "Use Bullish Pin Bar", group=candleGroup, tooltip="Enable bullish pin bars (long lower wick, small body near high)")
-useBearishPinBar = input.bool(true, "Use Bearish Pin Bar", group=candleGroup, tooltip="Enable bearish pin bars (long upper wick, small body near low)")
+useBullishPinBar = input.bool(false, "Use Bullish Pin Bar", group=candleGroup, tooltip="Enable bullish pin bars (long lower wick, small body near high)")
+useBearishPinBar = input.bool(false, "Use Bearish Pin Bar", group=candleGroup, tooltip="Enable bearish pin bars (long upper wick, small body near low)")
 
 // Entry Candle Indicator Settings
 candleIndicatorGroup = "Entry Candle Indicators"
 showEngulfingIndicator = input.bool(true, "Show Engulfing Candles", group=candleIndicatorGroup, tooltip="Display labels on all engulfing candles found on the chart (not just entry signals)")
-showPinBarIndicator = input.bool(true, "Show Pin Bars", group=candleIndicatorGroup, tooltip="Display labels on all pin bar candles found on the chart (not just entry signals)")
+showPinBarIndicator = input.bool(false, "Show Pin Bars", group=candleIndicatorGroup, tooltip="Display labels on all pin bar candles found on the chart (not just entry signals)")
 candleTimeFilter = input.string("All Times", "Show During", options=["All Times", "Kill Zones Only", "Custom Time Range"], group=candleIndicatorGroup, tooltip="Filter when to show candle pattern indicators")
 candleCustomSession = input.session("0000-2359", "Custom Time Range", group=candleIndicatorGroup, tooltip="Custom time range for showing candle indicators. Only used when 'Show During' is set to 'Custom Time Range'. Use the time picker to adjust")
 
 // Entry Candle Label Customization
 labelTextGroup = "Entry Candle Label Text"
-bullishEngulfingText = input.string("BE ↑", "Bullish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bullish engulfing candle labels")
-bearishEngulfingText = input.string("BE ↓", "Bearish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bearish engulfing candle labels")
-bullishPinBarText = input.string("PIN ↑", "Bullish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bullish pin bar candle labels")
-bearishPinBarText = input.string("PIN ↓", "Bearish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bearish pin bar candle labels")
+bullishEngulfingText = input.string("", "Bullish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bullish engulfing candle labels")
+bearishEngulfingText = input.string("", "Bearish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bearish engulfing candle labels")
+bullishPinBarText = input.string("", "Bullish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bullish pin bar candle labels")
+bearishPinBarText = input.string("", "Bearish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bearish pin bar candle labels")
 
 visualGroup = "Visual Settings"
 showTradeLines = input.bool(true, "Show Trade Lines (Entry/SL/TP)", group=visualGroup, tooltip="Display horizontal lines showing entry price, stop loss, and take profit levels when trades are active")
@@ -193,7 +193,7 @@ tradeLineWidth = input.int(2, "Trade Lines Width", minval=1, maxval=5, group=lin
 // Kill Zone Settings - Trading Windows
 kzGroup = "Kill Zone Trading Windows"
 enableLondonKZ = input.bool(true, "Enable London Kill Zone", group=kzGroup, tooltip="Enable trading during London Kill Zone (typically 3AM-6AM ET when London market opens)")
-londonKZSession = input.session("0300-0600", "London KZ Time Range", group=kzGroup, tooltip="Define London Kill Zone time range. Default: 3AM-6AM ET. Use the time picker to adjust session times")
+londonKZSession = input.session("0200-0600", "London KZ Time Range", group=kzGroup, tooltip="Define London Kill Zone time range. Default: 2AM-6AM ET. Use the time picker to adjust session times")
 enableNYKZ = input.bool(false, "Enable New York Kill Zone", group=kzGroup, tooltip="Enable trading during New York Kill Zone (typically 9AM-12PM ET when NY market opens)")
 nyKZSession = input.session("0900-1200", "NY KZ Time Range", group=kzGroup, tooltip="Define New York Kill Zone time range. Default: 9AM-12PM ET. Use the time picker to adjust session times")
 
@@ -205,7 +205,7 @@ tradeWed = input.bool(true, "Wednesday", group=dayGroup, tooltip="Enable trading
 tradeThu = input.bool(true, "Thursday", group=dayGroup, tooltip="Enable trading on Thursdays")
 tradeFri = input.bool(true, "Friday", group=dayGroup, tooltip="Enable trading on Fridays")
 tradeSat = input.bool(false, "Saturday", group=dayGroup, tooltip="Enable trading on Saturdays (typically low liquidity)")
-tradeSun = input.bool(false, "Sunday", group=dayGroup, tooltip="Enable trading on Sundays (typically low liquidity)")
+tradeSun = input.bool(true, "Sunday", group=dayGroup, tooltip="Enable trading on Sundays")
 
 // Additional Session Settings
 additionalSessionGroup = "Additional Trading Sessions"
@@ -227,10 +227,10 @@ showMacdEmaSignals = input.bool(true, "Show Buy/Sell Signals", group=macdEmaGrou
 
 // EMA Settings
 emaSettingsGroup = "EMA Settings"
-emaMomLength = input.int(12, "Momentum EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Momentum EMA (default: 12)")
+emaMomLength = input.int(8, "Momentum EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Momentum EMA (default: 8)")
 emaFastLength = input.int(20, "Fast EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Fast EMA (default: 20)")
 emaSlowLength = input.int(50, "Slow EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Slow EMA (default: 50)")
-emaDirLength = input.int(200, "Direction EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Direction EMA (default: 200)")
+emaDirLength = input.int(238, "Direction EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Direction EMA (default: 238)")
 
 // EMA Colors
 emaColorsGroup = "EMA Colors"
@@ -250,7 +250,7 @@ macdSignalLength = input.int(9, "MACD Signal Smoothing", minval=1, maxval=50, gr
 // MACD + EMA Entry Signal Settings
 macdEmaSignalGroup = "MACD + EMA Entry Signal"
 useSignal3 = input.bool(true, "Enable MACD + EMA Entry Signal", group=macdEmaSignalGroup, tooltip="Use MACD + EMA Golden/Death Cross as entry signal")
-signal3Label = input.string("MACD+EMA", "Signal Label", group=macdEmaSignalGroup, tooltip="Custom label for MACD + EMA entry signals")
+signal3Label = input.string("Entry", "Signal Label", group=macdEmaSignalGroup, tooltip="Custom label for MACD + EMA entry signals")
 signal3RequireKillZone = input.bool(false, "Require Kill Zone", group=macdEmaSignalGroup, tooltip="MACD + EMA signal must occur during London or NY kill zone")
 signal3RequireDayFilter = input.bool(true, "Require Day Filter", group=macdEmaSignalGroup, tooltip="MACD + EMA signal only on enabled trading days")
 
