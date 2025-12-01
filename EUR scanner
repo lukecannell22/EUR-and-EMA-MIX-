@@ -1127,7 +1127,6 @@ if longEntry and strategy.position_size == 0
     
     // Reset divergence flags after entry
     hasBullishDivergence := false
-    asiaLowSwept := false
 
 // Short Entry
 if shortEntry and strategy.position_size == 0
@@ -1176,7 +1175,6 @@ if shortEntry and strategy.position_size == 0
     
     // Reset divergence flags after entry
     hasBearishDivergence := false
-    asiaHighSwept := false
 
 // Extend trade lines each bar (up to max hours)
 if showTradeLines and not na(entryLine) and strategy.position_size != 0
