@@ -6,29 +6,31 @@
 #property copyright "Converted from TradingView Pine Script"
 #property link      ""
 #property version   "1.00"
-#property strict
+#property description "MACD + EMA Cross Strategy with Golden/Death Cross signals"
 
 #include <Trade\Trade.mqh>
 #include <Trade\PositionInfo.mqh>
 #include <Trade\SymbolInfo.mqh>
 
-//--- Input parameters
+//+------------------------------------------------------------------+
+//| Input parameters                                                   |
+//+------------------------------------------------------------------+
 
 //--- EMA Settings
-input group "EMA Settings"
+sinput string  EMA_Settings = "=== EMA Settings ===";  // --- EMA Settings ---
 input int      EMA_Momentum_Period = 8;       // Momentum EMA Period
 input int      EMA_Fast_Period = 20;          // Fast EMA Period
 input int      EMA_Slow_Period = 50;          // Slow EMA Period
 input int      EMA_Direction_Period = 238;    // Direction EMA Period
 
 //--- MACD Settings
-input group "MACD Settings"
+sinput string  MACD_Settings = "=== MACD Settings ===";  // --- MACD Settings ---
 input int      MACD_Fast_Length = 12;         // MACD Fast Length
 input int      MACD_Slow_Length = 26;         // MACD Slow Length
 input int      MACD_Signal_Length = 9;        // MACD Signal Smoothing
 
 //--- Trade Management
-input group "Trade Management"
+sinput string  Trade_Settings = "=== Trade Management ===";  // --- Trade Management ---
 input double   StopLoss_Pips = 5.0;           // Stop Loss (Pips)
 input double   RiskPercent = 1.0;             // Risk % of Equity
 input double   TP1_Pips = 10.0;               // TP1 (Pips)
@@ -41,13 +43,13 @@ input double   TP2_Percent = 25.0;            // TP2 Exit %
 input bool     MoveToBreakevenAfterTP1 = true; // Move to Breakeven after TP1
 
 //--- Entry Signal Settings
-input group "Entry Signal Settings"
+sinput string  Entry_Settings = "=== Entry Signal Settings ===";  // --- Entry Settings ---
 input bool     EnableMacdEmaEntry = true;     // Enable MACD + EMA Entry Signal
 input bool     RequireKillZone = false;       // Require Kill Zone
 input bool     RequireDayFilter = true;       // Require Day Filter
 
 //--- Kill Zone Settings
-input group "Kill Zone Trading Windows"
+sinput string  KZ_Settings = "=== Kill Zone Trading Windows ===";  // --- Kill Zone Settings ---
 input bool     EnableLondonKZ = true;         // Enable London Kill Zone
 input int      LondonKZ_StartHour = 2;        // London KZ Start Hour (Server Time)
 input int      LondonKZ_EndHour = 6;          // London KZ End Hour (Server Time)
@@ -56,7 +58,7 @@ input int      NYKZ_StartHour = 9;            // NY KZ Start Hour (Server Time)
 input int      NYKZ_EndHour = 12;             // NY KZ End Hour (Server Time)
 
 //--- Trading Days
-input group "Trading Days"
+sinput string  Day_Settings = "=== Trading Days ===";  // --- Trading Days ---
 input bool     TradeMonday = true;            // Monday
 input bool     TradeTuesday = true;           // Tuesday
 input bool     TradeWednesday = true;         // Wednesday
@@ -66,7 +68,7 @@ input bool     TradeSaturday = false;         // Saturday
 input bool     TradeSunday = true;            // Sunday
 
 //--- Visual Settings
-input group "Visual Settings"
+sinput string  Visual_Settings = "=== Visual Settings ===";  // --- Visual Settings ---
 input bool     ShowEmaLines = true;           // Show EMA Lines
 input color    EMA_Momentum_Color = clrMagenta;   // Momentum EMA Color
 input color    EMA_Fast_Color = clrGreen;         // Fast EMA Color
