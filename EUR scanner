@@ -703,8 +703,10 @@ emaFast = ta.ema(close, emaFastLength)
 emaSlow = ta.ema(close, emaSlowLength)
 emaDirection = ta.ema(close, emaDirLength)
 
-// EMA Cross Detection
-emaCross = ta.cross(emaFast, emaSlow)
+// EMA Cross Detection - Directional crosses
+emaCrossOver = ta.crossover(emaFast, emaSlow)   // Fast crosses above Slow (bullish)
+emaCrossUnder = ta.crossunder(emaFast, emaSlow) // Fast crosses below Slow (bearish)
+emaCross = emaCrossOver or emaCrossUnder        // Any cross (for visual marker)
 
 // MACD Calculations
 macdFastMa = ta.ema(close, macdFastLength)
@@ -714,8 +716,10 @@ macdSignalLine = ta.ema(macdLine, macdSignalLength)
 macdHist = macdLine - macdSignalLine
 
 // Golden/Death Cross with MACD Confirmation
-goldenBuy = emaCross and macdLine > macdSignalLine
-goldenSell = emaCross and macdLine < macdSignalLine
+// Golden Cross: Fast EMA crosses ABOVE Slow EMA AND MACD is bullish
+goldenBuy = emaCrossOver and macdLine > macdSignalLine
+// Death Cross: Fast EMA crosses BELOW Slow EMA AND MACD is bearish
+goldenSell = emaCrossUnder and macdLine < macdSignalLine
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PIVOT DETECTION (MULTIPLE TIMEFRAMES)
@@ -1421,8 +1425,9 @@ emaFastPlot = plot(enableMacdEma and showEmaLines ? emaFast : na, title="EMA Fas
 emaSlowPlot = plot(enableMacdEma and showEmaLines ? emaSlow : na, title="EMA Slow", color=emaSlowColor, linewidth=2)
 plot(enableMacdEma and showEmaLines ? emaDirection : na, title="EMA Direction", color=emaDirColor, linewidth=2)
 
-// Plot EMA Cross marker
-plot(enableMacdEma and showMacdEmaCross and emaCross ? emaFast : na, title="EMA Cross", style=plot.style_cross, color=color.fuchsia, linewidth=3)
+// Plot EMA Cross markers - Green for Golden Cross (bullish), Red for Death Cross (bearish)
+plot(enableMacdEma and showMacdEmaCross and emaCrossOver ? emaFast : na, title="Golden Cross", style=plot.style_cross, color=color.lime, linewidth=3)
+plot(enableMacdEma and showMacdEmaCross and emaCrossUnder ? emaFast : na, title="Death Cross", style=plot.style_cross, color=color.red, linewidth=3)
 
 // EMA Cloud fill
 cloudColor = emaFast > emaSlow ? emaCloudBullColor : emaCloudBearColor
