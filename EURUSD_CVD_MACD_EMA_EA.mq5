@@ -116,6 +116,10 @@ int OnInit()
    pointValue = symbolInfo.Point();
    digits = (int)symbolInfo.Digits();
    
+   //--- Debug: Print initialization values
+   Print("Symbol: ", Symbol(), " Digits: ", digits, " Point: ", pointValue);
+   Print("For 5 pips, price distance = ", PipsToPrice(5.0));
+   
    //--- Set magic number for trade identification
    trade.SetExpertMagicNumber(magicNumber);
    trade.SetDeviationInPoints(10);
@@ -274,24 +278,34 @@ void CheckEntrySignals()
 //+------------------------------------------------------------------+
 void ExecuteBuyOrder()
 {
+   //--- Refresh symbol info to get current prices
+   symbolInfo.RefreshRates();
+   
    double ask = symbolInfo.Ask();
    double bid = symbolInfo.Bid();
    
-   //--- Calculate stop loss and take profit in price
-   double slPrice = ask - PipsToPrice(StopLoss_Pips);
-   double tp1Price = ask + PipsToPrice(TP1_Pips);
+   //--- Calculate stop loss and take profit as actual price levels
+   double slDistance = PipsToPrice(StopLoss_Pips);
+   double tpDistance = PipsToPrice(TP1_Pips);
+   
+   double slPrice = ask - slDistance;
+   double tp1Price = ask + tpDistance;
    
    //--- Calculate lot size based on risk
    double lotSize = CalculateLotSize(StopLoss_Pips);
    
-   //--- Normalize prices
+   //--- Normalize prices to correct digits
    slPrice = NormalizeDouble(slPrice, digits);
    tp1Price = NormalizeDouble(tp1Price, digits);
+   
+   //--- Debug output
+   Print("BUY Order Details: Ask=", ask, " SL=", slPrice, " TP=", tp1Price, " Lot=", lotSize);
+   Print("SL Distance=", slDistance, " TP Distance=", tpDistance);
    
    //--- Execute order
    if(trade.Buy(lotSize, Symbol(), ask, slPrice, tp1Price, "MACD+EMA Golden Cross"))
    {
-      Print("BUY order executed: Lot=", lotSize, " SL=", slPrice, " TP=", tp1Price);
+      Print("BUY order executed successfully");
    }
    else
    {
@@ -304,24 +318,34 @@ void ExecuteBuyOrder()
 //+------------------------------------------------------------------+
 void ExecuteSellOrder()
 {
+   //--- Refresh symbol info to get current prices
+   symbolInfo.RefreshRates();
+   
    double ask = symbolInfo.Ask();
    double bid = symbolInfo.Bid();
    
-   //--- Calculate stop loss and take profit in price
-   double slPrice = bid + PipsToPrice(StopLoss_Pips);
-   double tp1Price = bid - PipsToPrice(TP1_Pips);
+   //--- Calculate stop loss and take profit as actual price levels
+   double slDistance = PipsToPrice(StopLoss_Pips);
+   double tpDistance = PipsToPrice(TP1_Pips);
+   
+   double slPrice = bid + slDistance;
+   double tp1Price = bid - tpDistance;
    
    //--- Calculate lot size based on risk
    double lotSize = CalculateLotSize(StopLoss_Pips);
    
-   //--- Normalize prices
+   //--- Normalize prices to correct digits
    slPrice = NormalizeDouble(slPrice, digits);
    tp1Price = NormalizeDouble(tp1Price, digits);
+   
+   //--- Debug output
+   Print("SELL Order Details: Bid=", bid, " SL=", slPrice, " TP=", tp1Price, " Lot=", lotSize);
+   Print("SL Distance=", slDistance, " TP Distance=", tpDistance);
    
    //--- Execute order
    if(trade.Sell(lotSize, Symbol(), bid, slPrice, tp1Price, "MACD+EMA Death Cross"))
    {
-      Print("SELL order executed: Lot=", lotSize, " SL=", slPrice, " TP=", tp1Price);
+      Print("SELL order executed successfully");
    }
    else
    {
