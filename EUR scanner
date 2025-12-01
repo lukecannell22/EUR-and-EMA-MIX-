@@ -208,14 +208,12 @@ showMacdEmaSignals = input.bool(true, "Show Buy/Sell Signals", group=macdEmaGrou
 
 // EMA Settings
 emaSettingsGroup = "EMA Settings"
-emaMomLength = input.int(8, "Momentum EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Momentum EMA (default: 8)")
 emaFastLength = input.int(20, "Fast EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Fast EMA (default: 20)")
 emaSlowLength = input.int(50, "Slow EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Slow EMA (default: 50)")
 emaDirLength = input.int(238, "Direction EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Direction EMA (default: 238)")
 
 // EMA Colors
 emaColorsGroup = "EMA Colors"
-emaMomColor = input.color(color.fuchsia, "Momentum EMA Color", group=emaColorsGroup)
 emaFastColor = input.color(color.green, "Fast EMA Color", group=emaColorsGroup)
 emaSlowColor = input.color(color.red, "Slow EMA Color", group=emaColorsGroup)
 emaDirColor = input.color(color.blue, "Direction EMA Color", group=emaColorsGroup)
@@ -679,7 +677,6 @@ if barstate.islast and cumVol == 0
 // ═══════════════════════════════════════════════════════════════════════════
 
 // EMA Calculations
-emaMom = ta.ema(close, emaMomLength)
 emaFast = ta.ema(close, emaFastLength)
 emaSlow = ta.ema(close, emaSlowLength)
 emaDirection = ta.ema(close, emaDirLength)
@@ -1301,7 +1298,6 @@ if showTradeLines and not na(entryLine)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Plot EMA lines if enabled
-emaMomPlot = plot(enableMacdEma and showEmaLines ? emaMom : na, title="EMA Momentum", color=emaMomColor, linewidth=2)
 emaFastPlot = plot(enableMacdEma and showEmaLines ? emaFast : na, title="EMA Fast", color=emaFastColor, linewidth=2)
 emaSlowPlot = plot(enableMacdEma and showEmaLines ? emaSlow : na, title="EMA Slow", color=emaSlowColor, linewidth=2)
 plot(enableMacdEma and showEmaLines ? emaDirection : na, title="EMA Direction", color=emaDirColor, linewidth=2)

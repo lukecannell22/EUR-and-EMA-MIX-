@@ -5,7 +5,7 @@
 //+------------------------------------------------------------------+
 #property copyright "Converted from TradingView Pine Script"
 #property link      ""
-#property version   "1.00"
+#property version   "1.01"
 #property description "MACD + EMA Cross Strategy with Golden/Death Cross signals"
 
 #include <Trade\Trade.mqh>
@@ -18,7 +18,6 @@
 
 //--- EMA Settings
 sinput string  EMA_Settings = "=== EMA Settings ===";  // --- EMA Settings ---
-input int      EMA_Momentum_Period = 8;       // Momentum EMA Period
 input int      EMA_Fast_Period = 20;          // Fast EMA Period
 input int      EMA_Slow_Period = 50;          // Slow EMA Period
 input int      EMA_Direction_Period = 238;    // Direction EMA Period
@@ -38,8 +37,6 @@ input bool     EnableTP2 = false;             // Enable TP2
 input double   TP2_Pips = 20.0;               // TP2 (Pips)
 input bool     EnableTP3 = false;             // Enable TP3
 input double   TP3_Pips = 30.0;               // TP3 (Pips)
-input double   TP1_Percent = 100.0;           // TP1 Exit %
-input double   TP2_Percent = 25.0;            // TP2 Exit %
 input bool     MoveToBreakevenAfterTP1 = true; // Move to Breakeven after TP1
 
 //--- Entry Signal Settings
@@ -48,14 +45,14 @@ input bool     EnableMacdEmaEntry = true;     // Enable MACD + EMA Entry Signal
 input bool     RequireKillZone = false;       // Require Kill Zone
 input bool     RequireDayFilter = true;       // Require Day Filter
 
-//--- Kill Zone Settings
+//--- Kill Zone Settings (with proper time inputs)
 sinput string  KZ_Settings = "=== Kill Zone Trading Windows ===";  // --- Kill Zone Settings ---
 input bool     EnableLondonKZ = true;         // Enable London Kill Zone
-input int      LondonKZ_StartHour = 2;        // London KZ Start Hour (Server Time)
-input int      LondonKZ_EndHour = 6;          // London KZ End Hour (Server Time)
+input string   LondonKZ_Start = "02:00";      // London KZ Start Time (HH:MM)
+input string   LondonKZ_End = "06:00";        // London KZ End Time (HH:MM)
 input bool     EnableNYKZ = false;            // Enable New York Kill Zone
-input int      NYKZ_StartHour = 9;            // NY KZ Start Hour (Server Time)
-input int      NYKZ_EndHour = 12;             // NY KZ End Hour (Server Time)
+input string   NYKZ_Start = "09:00";          // NY KZ Start Time (HH:MM)
+input string   NYKZ_End = "12:00";            // NY KZ End Time (HH:MM)
 
 //--- Trading Days
 sinput string  Day_Settings = "=== Trading Days ===";  // --- Trading Days ---
@@ -70,7 +67,6 @@ input bool     TradeSunday = true;            // Sunday
 //--- Visual Settings
 sinput string  Visual_Settings = "=== Visual Settings ===";  // --- Visual Settings ---
 input bool     ShowEmaLines = true;           // Show EMA Lines
-input color    EMA_Momentum_Color = clrMagenta;   // Momentum EMA Color
 input color    EMA_Fast_Color = clrGreen;         // Fast EMA Color
 input color    EMA_Slow_Color = clrRed;           // Slow EMA Color
 input color    EMA_Direction_Color = clrBlue;     // Direction EMA Color
@@ -80,22 +76,16 @@ CTrade         trade;
 CPositionInfo  positionInfo;
 CSymbolInfo    symbolInfo;
 
-int            handleEMA_Mom;
 int            handleEMA_Fast;
 int            handleEMA_Slow;
 int            handleEMA_Dir;
 int            handleMACD;
 
-double         emaBufferMom[];
 double         emaBufferFast[];
 double         emaBufferSlow[];
 double         emaBufferDir[];
 double         macdMain[];
 double         macdSignal[];
-
-double         prevEmaFast = 0;
-double         prevEmaSlow = 0;
-bool           initialized = false;
 
 int            magicNumber = 123456;
 double         pointValue;
@@ -117,16 +107,17 @@ int OnInit()
    digits = (int)symbolInfo.Digits();
    
    //--- Debug: Print initialization values
+   Print("=== EA Initialized ===");
    Print("Symbol: ", Symbol(), " Digits: ", digits, " Point: ", pointValue);
    Print("For 5 pips, price distance = ", PipsToPrice(5.0));
+   Print("EMA Fast: ", EMA_Fast_Period, " EMA Slow: ", EMA_Slow_Period);
    
    //--- Set magic number for trade identification
    trade.SetExpertMagicNumber(magicNumber);
-   trade.SetDeviationInPoints(10);
-   trade.SetTypeFilling(ORDER_FILLING_IOC);
+   trade.SetDeviationInPoints(30);  // Allow more slippage
+   trade.SetTypeFilling(ORDER_FILLING_FOK);  // Try FOK first
    
    //--- Create EMA handles
-   handleEMA_Mom = iMA(Symbol(), PERIOD_CURRENT, EMA_Momentum_Period, 0, MODE_EMA, PRICE_CLOSE);
    handleEMA_Fast = iMA(Symbol(), PERIOD_CURRENT, EMA_Fast_Period, 0, MODE_EMA, PRICE_CLOSE);
    handleEMA_Slow = iMA(Symbol(), PERIOD_CURRENT, EMA_Slow_Period, 0, MODE_EMA, PRICE_CLOSE);
    handleEMA_Dir = iMA(Symbol(), PERIOD_CURRENT, EMA_Direction_Period, 0, MODE_EMA, PRICE_CLOSE);
@@ -135,23 +126,21 @@ int OnInit()
    handleMACD = iMACD(Symbol(), PERIOD_CURRENT, MACD_Fast_Length, MACD_Slow_Length, MACD_Signal_Length, PRICE_CLOSE);
    
    //--- Check handles
-   if(handleEMA_Mom == INVALID_HANDLE || handleEMA_Fast == INVALID_HANDLE || 
-      handleEMA_Slow == INVALID_HANDLE || handleEMA_Dir == INVALID_HANDLE ||
-      handleMACD == INVALID_HANDLE)
+   if(handleEMA_Fast == INVALID_HANDLE || handleEMA_Slow == INVALID_HANDLE || 
+      handleEMA_Dir == INVALID_HANDLE || handleMACD == INVALID_HANDLE)
    {
       Print("Error creating indicator handles");
       return(INIT_FAILED);
    }
    
    //--- Set array as series
-   ArraySetAsSeries(emaBufferMom, true);
    ArraySetAsSeries(emaBufferFast, true);
    ArraySetAsSeries(emaBufferSlow, true);
    ArraySetAsSeries(emaBufferDir, true);
    ArraySetAsSeries(macdMain, true);
    ArraySetAsSeries(macdSignal, true);
    
-   Print("EURUSD CVD + MACD EMA EA initialized successfully");
+   Print("EURUSD MACD + EMA EA initialized successfully");
    
    return(INIT_SUCCEEDED);
 }
@@ -162,16 +151,12 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    //--- Release indicator handles
-   IndicatorRelease(handleEMA_Mom);
    IndicatorRelease(handleEMA_Fast);
    IndicatorRelease(handleEMA_Slow);
    IndicatorRelease(handleEMA_Dir);
    IndicatorRelease(handleMACD);
    
-   //--- Remove objects
-   ObjectsDeleteAll(0, "EMA_");
-   
-   Print("EURUSD CVD + MACD EMA EA deinitialized");
+   Print("EURUSD MACD + EMA EA deinitialized");
 }
 
 //+------------------------------------------------------------------+
@@ -188,27 +173,31 @@ void OnTick()
    
    lastBarTime = currentBarTime;
    
-   //--- Copy indicator data
-   if(CopyBuffer(handleEMA_Mom, 0, 0, 3, emaBufferMom) < 3) return;
-   if(CopyBuffer(handleEMA_Fast, 0, 0, 3, emaBufferFast) < 3) return;
-   if(CopyBuffer(handleEMA_Slow, 0, 0, 3, emaBufferSlow) < 3) return;
-   if(CopyBuffer(handleEMA_Dir, 0, 0, 3, emaBufferDir) < 3) return;
-   if(CopyBuffer(handleMACD, 0, 0, 3, macdMain) < 3) return;
-   if(CopyBuffer(handleMACD, 1, 0, 3, macdSignal) < 3) return;
-   
-   //--- Store previous values for cross detection
-   if(!initialized)
+   //--- Copy indicator data (need 3 bars for cross detection)
+   if(CopyBuffer(handleEMA_Fast, 0, 0, 3, emaBufferFast) < 3)
    {
-      prevEmaFast = emaBufferFast[1];
-      prevEmaSlow = emaBufferSlow[1];
-      initialized = true;
+      Print("Failed to copy Fast EMA buffer");
       return;
    }
-   
-   //--- Draw EMA lines if enabled
-   if(ShowEmaLines)
+   if(CopyBuffer(handleEMA_Slow, 0, 0, 3, emaBufferSlow) < 3)
    {
-      DrawEmaLines();
+      Print("Failed to copy Slow EMA buffer");
+      return;
+   }
+   if(CopyBuffer(handleEMA_Dir, 0, 0, 3, emaBufferDir) < 3)
+   {
+      Print("Failed to copy Direction EMA buffer");
+      return;
+   }
+   if(CopyBuffer(handleMACD, 0, 0, 3, macdMain) < 3)
+   {
+      Print("Failed to copy MACD Main buffer");
+      return;
+   }
+   if(CopyBuffer(handleMACD, 1, 0, 3, macdSignal) < 3)
+   {
+      Print("Failed to copy MACD Signal buffer");
+      return;
    }
    
    //--- Check entry conditions
@@ -219,10 +208,53 @@ void OnTick()
    
    //--- Manage open positions (TP1 breakeven, etc.)
    ManagePositions();
+}
+
+//+------------------------------------------------------------------+
+//| Parse time string to hour and minute                               |
+//+------------------------------------------------------------------+
+void ParseTime(string timeStr, int &hour, int &minute)
+{
+   string parts[];
+   int count = StringSplit(timeStr, ':', parts);
+   if(count >= 2)
+   {
+      hour = (int)StringToInteger(parts[0]);
+      minute = (int)StringToInteger(parts[1]);
+   }
+   else
+   {
+      hour = 0;
+      minute = 0;
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Check if current time is in a time range                           |
+//+------------------------------------------------------------------+
+bool IsInTimeRange(string startTime, string endTime)
+{
+   MqlDateTime dt;
+   TimeCurrent(dt);
    
-   //--- Update previous values
-   prevEmaFast = emaBufferFast[1];
-   prevEmaSlow = emaBufferSlow[1];
+   int startHour, startMin, endHour, endMin;
+   ParseTime(startTime, startHour, startMin);
+   ParseTime(endTime, endHour, endMin);
+   
+   int currentMinutes = dt.hour * 60 + dt.min;
+   int startMinutes = startHour * 60 + startMin;
+   int endMinutes = endHour * 60 + endMin;
+   
+   if(startMinutes <= endMinutes)
+   {
+      // Same day range
+      return (currentMinutes >= startMinutes && currentMinutes < endMinutes);
+   }
+   else
+   {
+      // Crosses midnight
+      return (currentMinutes >= startMinutes || currentMinutes < endMinutes);
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -232,21 +264,28 @@ void CheckEntrySignals()
 {
    //--- Check day filter
    if(RequireDayFilter && !IsTradingDayEnabled())
+   {
       return;
+   }
    
    //--- Check kill zone filter
    if(RequireKillZone && !IsInKillZone())
+   {
       return;
+   }
    
-   //--- Current values (bar 1, completed bar)
+   //--- Values from completed bars (bar index 1 = last completed, 2 = bar before that)
    double emaFastCurrent = emaBufferFast[1];
    double emaSlowCurrent = emaBufferSlow[1];
+   double emaFastPrev = emaBufferFast[2];
+   double emaSlowPrev = emaBufferSlow[2];
    double macdMainCurrent = macdMain[1];
    double macdSignalCurrent = macdSignal[1];
    
-   //--- Previous values (bar 2)
-   double emaFastPrev = emaBufferFast[2];
-   double emaSlowPrev = emaBufferSlow[2];
+   //--- Debug output
+   Print("Checking signals - Fast EMA: ", emaFastCurrent, " Slow EMA: ", emaSlowCurrent);
+   Print("Previous - Fast EMA: ", emaFastPrev, " Slow EMA: ", emaSlowPrev);
+   Print("MACD: ", macdMainCurrent, " Signal: ", macdSignalCurrent);
    
    //--- Detect Golden Cross (Fast EMA crosses ABOVE Slow EMA)
    bool goldenCross = (emaFastPrev <= emaSlowPrev) && (emaFastCurrent > emaSlowCurrent);
@@ -261,14 +300,14 @@ void CheckEntrySignals()
    //--- Buy Signal: Golden Cross + MACD Bullish
    if(goldenCross && macdBullish)
    {
-      Print("BUY SIGNAL: Golden Cross with MACD Bullish confirmation");
+      Print(">>> BUY SIGNAL DETECTED: Golden Cross with MACD Bullish confirmation <<<");
       ExecuteBuyOrder();
    }
    
    //--- Sell Signal: Death Cross + MACD Bearish
    if(deathCross && macdBearish)
    {
-      Print("SELL SIGNAL: Death Cross with MACD Bearish confirmation");
+      Print(">>> SELL SIGNAL DETECTED: Death Cross with MACD Bearish confirmation <<<");
       ExecuteSellOrder();
    }
 }
@@ -279,37 +318,46 @@ void CheckEntrySignals()
 void ExecuteBuyOrder()
 {
    //--- Refresh symbol info to get current prices
-   symbolInfo.RefreshRates();
+   if(!symbolInfo.RefreshRates())
+   {
+      Print("Failed to refresh rates");
+      return;
+   }
    
    double ask = symbolInfo.Ask();
    double bid = symbolInfo.Bid();
+   
+   if(ask == 0 || bid == 0)
+   {
+      Print("Invalid prices: Ask=", ask, " Bid=", bid);
+      return;
+   }
    
    //--- Calculate stop loss and take profit as actual price levels
    double slDistance = PipsToPrice(StopLoss_Pips);
    double tpDistance = PipsToPrice(TP1_Pips);
    
-   double slPrice = ask - slDistance;
-   double tp1Price = ask + tpDistance;
+   double slPrice = NormalizeDouble(ask - slDistance, digits);
+   double tp1Price = NormalizeDouble(ask + tpDistance, digits);
    
    //--- Calculate lot size based on risk
    double lotSize = CalculateLotSize(StopLoss_Pips);
    
-   //--- Normalize prices to correct digits
-   slPrice = NormalizeDouble(slPrice, digits);
-   tp1Price = NormalizeDouble(tp1Price, digits);
-   
    //--- Debug output
-   Print("BUY Order Details: Ask=", ask, " SL=", slPrice, " TP=", tp1Price, " Lot=", lotSize);
-   Print("SL Distance=", slDistance, " TP Distance=", tpDistance);
+   Print("=== BUY Order ===");
+   Print("Ask: ", ask, " Bid: ", bid);
+   Print("SL Price: ", slPrice, " (", slDistance, " below ask)");
+   Print("TP Price: ", tp1Price, " (", tpDistance, " above ask)");
+   Print("Lot Size: ", lotSize);
    
    //--- Execute order
-   if(trade.Buy(lotSize, Symbol(), ask, slPrice, tp1Price, "MACD+EMA Golden Cross"))
+   if(trade.Buy(lotSize, Symbol(), ask, slPrice, tp1Price, "MACD+EMA Buy"))
    {
-      Print("BUY order executed successfully");
+      Print("BUY order executed successfully!");
    }
    else
    {
-      Print("BUY order failed: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+      Print("BUY order FAILED: Error ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
    }
 }
 
@@ -319,37 +367,46 @@ void ExecuteBuyOrder()
 void ExecuteSellOrder()
 {
    //--- Refresh symbol info to get current prices
-   symbolInfo.RefreshRates();
+   if(!symbolInfo.RefreshRates())
+   {
+      Print("Failed to refresh rates");
+      return;
+   }
    
    double ask = symbolInfo.Ask();
    double bid = symbolInfo.Bid();
+   
+   if(ask == 0 || bid == 0)
+   {
+      Print("Invalid prices: Ask=", ask, " Bid=", bid);
+      return;
+   }
    
    //--- Calculate stop loss and take profit as actual price levels
    double slDistance = PipsToPrice(StopLoss_Pips);
    double tpDistance = PipsToPrice(TP1_Pips);
    
-   double slPrice = bid + slDistance;
-   double tp1Price = bid - tpDistance;
+   double slPrice = NormalizeDouble(bid + slDistance, digits);
+   double tp1Price = NormalizeDouble(bid - tpDistance, digits);
    
    //--- Calculate lot size based on risk
    double lotSize = CalculateLotSize(StopLoss_Pips);
    
-   //--- Normalize prices to correct digits
-   slPrice = NormalizeDouble(slPrice, digits);
-   tp1Price = NormalizeDouble(tp1Price, digits);
-   
    //--- Debug output
-   Print("SELL Order Details: Bid=", bid, " SL=", slPrice, " TP=", tp1Price, " Lot=", lotSize);
-   Print("SL Distance=", slDistance, " TP Distance=", tpDistance);
+   Print("=== SELL Order ===");
+   Print("Ask: ", ask, " Bid: ", bid);
+   Print("SL Price: ", slPrice, " (", slDistance, " above bid)");
+   Print("TP Price: ", tp1Price, " (", tpDistance, " below bid)");
+   Print("Lot Size: ", lotSize);
    
    //--- Execute order
-   if(trade.Sell(lotSize, Symbol(), bid, slPrice, tp1Price, "MACD+EMA Death Cross"))
+   if(trade.Sell(lotSize, Symbol(), bid, slPrice, tp1Price, "MACD+EMA Sell"))
    {
-      Print("SELL order executed successfully");
+      Print("SELL order executed successfully!");
    }
    else
    {
-      Print("SELL order failed: ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
+      Print("SELL order FAILED: Error ", trade.ResultRetcode(), " - ", trade.ResultRetcodeDescription());
    }
 }
 
@@ -361,12 +418,19 @@ double CalculateLotSize(double slPips)
    double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double riskAmount = accountBalance * (RiskPercent / 100.0);
    
-   //--- Get tick value
+   //--- Get tick value and size
    double tickValue = symbolInfo.TickValue();
    double tickSize = symbolInfo.TickSize();
    
-   //--- Calculate pip value
-   double pipValue = (tickValue / tickSize) * pointValue * 10;  // For 5-digit brokers
+   if(tickValue == 0 || tickSize == 0)
+   {
+      Print("Invalid tick info, using minimum lot");
+      return symbolInfo.LotsMin();
+   }
+   
+   //--- Calculate pip value (for 5-digit brokers, 1 pip = 10 points)
+   double pipSize = (digits == 5 || digits == 3) ? pointValue * 10 : pointValue;
+   double pipValue = tickValue * (pipSize / tickSize);
    
    //--- Calculate lot size
    double lotSize = riskAmount / (slPips * pipValue);
@@ -387,7 +451,7 @@ double CalculateLotSize(double slPips)
 //+------------------------------------------------------------------+
 double PipsToPrice(double pips)
 {
-   //--- For 5-digit brokers (EURUSD, etc.)
+   //--- For 5-digit brokers (EURUSD, etc.) 1 pip = 10 points
    if(digits == 5 || digits == 3)
       return pips * pointValue * 10;
    else
@@ -420,23 +484,13 @@ bool IsTradingDayEnabled()
 //+------------------------------------------------------------------+
 bool IsInKillZone()
 {
-   MqlDateTime dt;
-   TimeCurrent(dt);
-   int currentHour = dt.hour;
-   
    //--- Check London Kill Zone
-   if(EnableLondonKZ)
-   {
-      if(currentHour >= LondonKZ_StartHour && currentHour < LondonKZ_EndHour)
-         return true;
-   }
+   if(EnableLondonKZ && IsInTimeRange(LondonKZ_Start, LondonKZ_End))
+      return true;
    
    //--- Check NY Kill Zone
-   if(EnableNYKZ)
-   {
-      if(currentHour >= NYKZ_StartHour && currentHour < NYKZ_EndHour)
-         return true;
-   }
+   if(EnableNYKZ && IsInTimeRange(NYKZ_Start, NYKZ_End))
+      return true;
    
    return false;
 }
@@ -462,6 +516,9 @@ bool HasOpenPosition()
 //+------------------------------------------------------------------+
 void ManagePositions()
 {
+   if(!MoveToBreakevenAfterTP1)
+      return;
+      
    for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
       if(positionInfo.SelectByIndex(i))
@@ -469,77 +526,42 @@ void ManagePositions()
          if(positionInfo.Symbol() != Symbol() || positionInfo.Magic() != magicNumber)
             continue;
          
-         //--- Check for move to breakeven after TP1
-         if(MoveToBreakevenAfterTP1)
+         double entryPrice = positionInfo.PriceOpen();
+         double currentSL = positionInfo.StopLoss();
+         double currentPrice = positionInfo.PriceCurrent();
+         double tp1Distance = PipsToPrice(TP1_Pips);
+         
+         //--- For buy positions
+         if(positionInfo.PositionType() == POSITION_TYPE_BUY)
          {
-            double entryPrice = positionInfo.PriceOpen();
-            double currentSL = positionInfo.StopLoss();
-            double currentPrice = positionInfo.PriceCurrent();
+            double tp1Level = entryPrice + tp1Distance;
             
-            //--- For buy positions
-            if(positionInfo.PositionType() == POSITION_TYPE_BUY)
+            //--- If price has reached TP1 and SL is not at breakeven yet
+            if(currentPrice >= tp1Level && currentSL < entryPrice)
             {
-               double tp1Level = entryPrice + PipsToPrice(TP1_Pips);
-               
-               //--- If price has reached TP1 and SL is not at breakeven yet
-               if(currentPrice >= tp1Level && currentSL < entryPrice)
+               double newSL = NormalizeDouble(entryPrice + pointValue, digits);
+               if(trade.PositionModify(positionInfo.Ticket(), newSL, positionInfo.TakeProfit()))
                {
-                  double newSL = NormalizeDouble(entryPrice, digits);
-                  if(trade.PositionModify(positionInfo.Ticket(), newSL, positionInfo.TakeProfit()))
-                  {
-                     Print("BUY position moved to breakeven");
-                  }
+                  Print("BUY position moved to breakeven");
                }
             }
-            //--- For sell positions
-            else if(positionInfo.PositionType() == POSITION_TYPE_SELL)
+         }
+         //--- For sell positions
+         else if(positionInfo.PositionType() == POSITION_TYPE_SELL)
+         {
+            double tp1Level = entryPrice - tp1Distance;
+            
+            //--- If price has reached TP1 and SL is not at breakeven yet
+            if(currentPrice <= tp1Level && currentSL > entryPrice)
             {
-               double tp1Level = entryPrice - PipsToPrice(TP1_Pips);
-               
-               //--- If price has reached TP1 and SL is not at breakeven yet
-               if(currentPrice <= tp1Level && currentSL > entryPrice)
+               double newSL = NormalizeDouble(entryPrice - pointValue, digits);
+               if(trade.PositionModify(positionInfo.Ticket(), newSL, positionInfo.TakeProfit()))
                {
-                  double newSL = NormalizeDouble(entryPrice, digits);
-                  if(trade.PositionModify(positionInfo.Ticket(), newSL, positionInfo.TakeProfit()))
-                  {
-                     Print("SELL position moved to breakeven");
-                  }
+                  Print("SELL position moved to breakeven");
                }
             }
          }
       }
    }
-}
-
-//+------------------------------------------------------------------+
-//| Draw EMA lines on chart                                            |
-//+------------------------------------------------------------------+
-void DrawEmaLines()
-{
-   //--- We'll draw indicator objects for visual reference
-   //--- This is optional - you can also just use the built-in MA indicator
-   
-   string prefix = "EMA_";
-   
-   //--- Create horizontal lines at current EMA values for reference
-   double emaM = emaBufferMom[0];
-   double emaF = emaBufferFast[0];
-   double emaS = emaBufferSlow[0];
-   double emaD = emaBufferDir[0];
-   
-   //--- Note: For proper EMA lines on chart, it's better to add the 
-   //--- Moving Average indicators directly to the chart in MT5
-   //--- This function is just for reference points
-}
-
-//+------------------------------------------------------------------+
-//| ChartEvent handler for additional functionality                    |
-//+------------------------------------------------------------------+
-void OnChartEvent(const int id,
-                  const long &lparam,
-                  const double &dparam,
-                  const string &sparam)
-{
-   //--- Handle chart events if needed
 }
 //+------------------------------------------------------------------+
