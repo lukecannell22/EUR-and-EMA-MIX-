@@ -140,32 +140,15 @@ moveToBreakevenAfterTP2 = input.bool(false, "Move to Breakeven after TP2", group
 // ═══════════════════════════════════════════════════════════════════════════
 
 signalGroup = "Entry Signals"
-useSignal1 = input.bool(false, "Enable Full Entry Signal", group=signalGroup, tooltip="Full entry requires all conditions: liquidity sweep, divergence, engulfing, kill zone, and day filter")
-signal1Label = input.string("Full Entry", "Full Entry Label", group=signalGroup, tooltip="Custom label text for full entry signals on the chart")
-signal1RequireLiqSweep = input.bool(true, "Require Liquidity Sweep", group=signalGroup, inline="full1", tooltip="Full entry must include Asia high/low liquidity sweep")
-signal1RequireDivergence = input.bool(true, "Require Divergence", group=signalGroup, inline="full2", tooltip="Full entry must include price/CVD divergence")
-signal1RequireEngulfing = input.bool(true, "Require Engulfing", group=signalGroup, inline="full3", tooltip="Full entry must include engulfing/pin bar candle pattern")
-signal1RequireKillZone = input.bool(true, "Require Kill Zone", group=signalGroup, inline="full4", tooltip="Full entry must occur during London or NY kill zone")
-signal1RequireDayFilter = input.bool(true, "Require Day Filter", group=signalGroup, inline="full5", tooltip="Full entry only on enabled trading days")
-
-useSignal2 = input.bool(false, "Enable Simple Entry Signal", group=signalGroup, tooltip="Simple entry requires fewer conditions: divergence, engulfing, kill zone, and day filter (no liquidity sweep required)")
-signal2Label = input.string("Simple Entry", "Simple Entry Label", group=signalGroup, tooltip="Custom label text for simple entry signals on the chart")
-signal2RequireDivergence = input.bool(true, "Require Divergence", group=signalGroup, inline="simple1", tooltip="Simple entry must include price/CVD divergence")
-signal2RequireEngulfing = input.bool(true, "Require Engulfing", group=signalGroup, inline="simple2", tooltip="Simple entry must include engulfing/pin bar candle pattern")
-signal2RequireKillZone = input.bool(true, "Require Kill Zone", group=signalGroup, inline="simple3", tooltip="Simple entry must occur during London or NY kill zone")
-signal2RequireDayFilter = input.bool(true, "Require Day Filter", group=signalGroup, inline="simple4", tooltip="Simple entry only on enabled trading days")
 
 candleGroup = "Candle Pattern Selection"
-candleMode = input.string("Engulfing Only", "Entry Candle Type", options=["Engulfing Only", "Pin Bar Only", "Both"], group=candleGroup, tooltip="Choose which candle patterns to use for entries: engulfing, pin bars, or both")
+candleMode = input.string("Engulfing Only", "Entry Candle Type", options=["Engulfing Only"], group=candleGroup, tooltip="Engulfing candle patterns for entries")
 useBullishEngulfing = input.bool(true, "Use Bullish Engulfing", group=candleGroup, tooltip="Enable bullish engulfing patterns (bullish candle fully engulfs previous bearish candle)")
 useBearishEngulfing = input.bool(true, "Use Bearish Engulfing", group=candleGroup, tooltip="Enable bearish engulfing patterns (bearish candle fully engulfs previous bullish candle)")
-useBullishPinBar = input.bool(false, "Use Bullish Pin Bar", group=candleGroup, tooltip="Enable bullish pin bars (long lower wick, small body near high)")
-useBearishPinBar = input.bool(false, "Use Bearish Pin Bar", group=candleGroup, tooltip="Enable bearish pin bars (long upper wick, small body near low)")
 
 // Entry Candle Indicator Settings
 candleIndicatorGroup = "Entry Candle Indicators"
 showEngulfingIndicator = input.bool(true, "Show Engulfing Candles", group=candleIndicatorGroup, tooltip="Display labels on all engulfing candles found on the chart (not just entry signals)")
-showPinBarIndicator = input.bool(false, "Show Pin Bars", group=candleIndicatorGroup, tooltip="Display labels on all pin bar candles found on the chart (not just entry signals)")
 candleTimeFilter = input.string("All Times", "Show During", options=["All Times", "Kill Zones Only", "Custom Time Range"], group=candleIndicatorGroup, tooltip="Filter when to show candle pattern indicators")
 candleCustomSession = input.session("0000-2359", "Custom Time Range", group=candleIndicatorGroup, tooltip="Custom time range for showing candle indicators. Only used when 'Show During' is set to 'Custom Time Range'. Use the time picker to adjust")
 
@@ -173,8 +156,6 @@ candleCustomSession = input.session("0000-2359", "Custom Time Range", group=cand
 labelTextGroup = "Entry Candle Label Text"
 bullishEngulfingText = input.string("", "Bullish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bullish engulfing candle labels")
 bearishEngulfingText = input.string("", "Bearish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bearish engulfing candle labels")
-bullishPinBarText = input.string("", "Bullish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bullish pin bar candle labels")
-bearishPinBarText = input.string("", "Bearish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bearish pin bar candle labels")
 
 visualGroup = "Visual Settings"
 showTradeLines = input.bool(true, "Show Trade Lines (Entry/SL/TP)", group=visualGroup, tooltip="Display horizontal lines showing entry price, stop loss, and take profit levels when trades are active")
@@ -1042,53 +1023,9 @@ bullishEngulfing = close > open and close[1] < open[1] and close >= open[1] and 
 // Bearish Engulfing - current candle is bearish and body engulfs previous candle's body  
 bearishEngulfing = close < open and close[1] > open[1] and close <= open[1] and open >= close[1]
 
-// Pin Bar (High/Low Test) Detection
-// Bullish Pin Bar - long lower wick, small body, closes near high (tests low and rejects)
-bodySize = math.abs(close - open)
-upperWick = high - math.max(close, open)
-lowerWick = math.min(close, open) - low
-totalRange = high - low
-
-bullishPinBar = totalRange > 0 and lowerWick > (totalRange * 0.6) and bodySize < (totalRange * 0.3) and close > open and upperWick < (totalRange * 0.3)
-
-// Bearish Pin Bar - long upper wick, small body, closes near low (tests high and rejects)
-bearishPinBar = totalRange > 0 and upperWick > (totalRange * 0.6) and bodySize < (totalRange * 0.3) and close < open and lowerWick < (totalRange * 0.3)
-
-// Bullish confirmation candle based on mode
-bullishConfirmation = switch candleMode
-    "Engulfing Only" => bullishEngulfing
-    "Pin Bar Only" => bullishPinBar
-    "Both" => (useBullishEngulfing and bullishEngulfing) or (useBullishPinBar and bullishPinBar)
-    => false
-
-// Bearish confirmation candle based on mode
-bearishConfirmation = switch candleMode
-    "Engulfing Only" => bearishEngulfing
-    "Pin Bar Only" => bearishPinBar
-    "Both" => (useBearishEngulfing and bearishEngulfing) or (useBearishPinBar and bearishPinBar)
-    => false
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ASIA SESSION SWEEP DETECTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-var bool asiaLowSwept = false
-var bool asiaHighSwept = false
-
-// Sweep of Asia Low: price goes below and closes back above
-if not na(asiaLow)
-    if low < asiaLow and close > asiaLow
-        asiaLowSwept := true
-
-// Sweep of Asia High: price goes above and closes back below
-if not na(asiaHigh)
-    if high > asiaHigh and close < asiaHigh
-        asiaHighSwept := true
-
-// Reset sweep flags at start of new Asia session
-if asiaSessionStarted
-    asiaLowSwept := false
-    asiaHighSwept := false
+// Bullish/Bearish confirmation using engulfing only
+bullishConfirmation = bullishEngulfing
+bearishConfirmation = bearishEngulfing
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ENTRY LOGIC
@@ -1098,57 +1035,7 @@ if asiaSessionStarted
 tradingAllowed = isDayEnabled()
 inKillZone = isLondonKZWindow or isNYKZWindow or isInAdditionalSession
 
-// Modular Full Entry Signal (Signal 1)
-signal1LongConditions = useSignal1
-signal1ShortConditions = useSignal1
-
-if signal1RequireLiqSweep
-    signal1LongConditions := signal1LongConditions and asiaLowSwept
-    signal1ShortConditions := signal1ShortConditions and asiaHighSwept
-
-if signal1RequireDivergence
-    signal1LongConditions := signal1LongConditions and hasBullishDivergence
-    signal1ShortConditions := signal1ShortConditions and hasBearishDivergence
-
-if signal1RequireEngulfing
-    signal1LongConditions := signal1LongConditions and bullishConfirmation
-    signal1ShortConditions := signal1ShortConditions and bearishConfirmation
-
-if signal1RequireKillZone
-    signal1LongConditions := signal1LongConditions and inKillZone
-    signal1ShortConditions := signal1ShortConditions and inKillZone
-
-if signal1RequireDayFilter
-    signal1LongConditions := signal1LongConditions and tradingAllowed
-    signal1ShortConditions := signal1ShortConditions and tradingAllowed
-
-signal1Long = signal1LongConditions
-signal1Short = signal1ShortConditions
-
-// Modular Simple Entry Signal (Signal 2)
-signal2LongConditions = useSignal2
-signal2ShortConditions = useSignal2
-
-if signal2RequireDivergence
-    signal2LongConditions := signal2LongConditions and hasBullishDivergence
-    signal2ShortConditions := signal2ShortConditions and hasBearishDivergence
-
-if signal2RequireEngulfing
-    signal2LongConditions := signal2LongConditions and bullishConfirmation
-    signal2ShortConditions := signal2ShortConditions and bearishConfirmation
-
-if signal2RequireKillZone
-    signal2LongConditions := signal2LongConditions and inKillZone
-    signal2ShortConditions := signal2ShortConditions and inKillZone
-
-if signal2RequireDayFilter
-    signal2LongConditions := signal2LongConditions and tradingAllowed
-    signal2ShortConditions := signal2ShortConditions and tradingAllowed
-
-signal2Long = signal2LongConditions
-signal2Short = signal2ShortConditions
-
-// Modular MACD + EMA Entry Signal (Signal 3)
+// MACD + EMA Entry Signal
 signal3LongConditions = useSignal3 and enableMacdEma and goldenBuy
 signal3ShortConditions = useSignal3 and enableMacdEma and goldenSell
 
@@ -1163,15 +1050,11 @@ if signal3RequireDayFilter
 signal3Long = signal3LongConditions
 signal3Short = signal3ShortConditions
 
-// Combined entry signals
-longEntry = signal1Long or signal2Long or signal3Long
-shortEntry = signal1Short or signal2Short or signal3Short
+// Entry signals (MACD + EMA only)
+longEntry = signal3Long
+shortEntry = signal3Short
 
-// Debug: Show when Signal 2 entries are triggered
-plotshape(signal2Long, "Signal 2 Long", shape.triangleup, location.belowbar, color.new(color.lime, 0), size=size.tiny)
-plotshape(signal2Short, "Signal 2 Short", shape.triangledown, location.abovebar, color.new(color.red, 0), size=size.tiny)
-
-// Debug: Show when Signal 3 (MACD + EMA) entries are triggered
+// Show when MACD + EMA entries are triggered
 plotshape(signal3Long and showMacdEmaSignals, "MACD+EMA Buy", shape.labelup, location.belowbar, color.yellow, text="B", textcolor=color.black, size=size.small)
 plotshape(signal3Short and showMacdEmaSignals, "MACD+EMA Sell", shape.labeldown, location.abovebar, color.orange, text="S", textcolor=color.black, size=size.small)
 
@@ -1448,7 +1331,7 @@ else if candleTimeFilter == "Custom Time Range"
 else
     true
 
-// Show engulfing candles and pin bars with editable text labels
+// Show engulfing candles with editable text labels
 showEngulfingNow = showEngulfingIndicator and inCandleTimeWindow
 
 // Entry candle indicators - plotshape for Style tab customization (shape, color, size)
@@ -1460,18 +1343,6 @@ if showEngulfingNow and bullishEngulfing
 plotshape(showEngulfingNow and bearishEngulfing, "Bearish Engulfing", location=location.abovebar, size=size.small)
 if showEngulfingNow and bearishEngulfing
     label.new(bar_index, high + (high - low) * 0.002, bearishEngulfingText, style=label.style_none, textcolor=color.red, size=size.small, xloc=xloc.bar_index)
-
-showPinBarNow = showPinBarIndicator and inCandleTimeWindow
-
-// Pin bar indicators - plotshape for Style tab customization (shape, color, size)
-// Text labels are separate and use custom text from Inputs tab
-plotshape(showPinBarNow and bullishPinBar, "Bullish Pin Bar", location=location.belowbar, size=size.small)
-if showPinBarNow and bullishPinBar
-    label.new(bar_index, low - (high - low) * 0.002, bullishPinBarText, style=label.style_none, textcolor=color.blue, size=size.small, xloc=xloc.bar_index)
-
-plotshape(showPinBarNow and bearishPinBar, "Bearish Pin Bar", location=location.abovebar, size=size.small)
-if showPinBarNow and bearishPinBar
-    label.new(bar_index, high + (high - low) * 0.002, bearishPinBarText, style=label.style_none, textcolor=color.orange, size=size.small, xloc=xloc.bar_index)
 
 // Background color for Kill Zone windows
 bgcolor(isLondonKZWindow ? color.new(color.orange, 95) : na, title="London KZ Background")
