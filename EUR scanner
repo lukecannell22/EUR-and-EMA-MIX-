@@ -1329,15 +1329,22 @@ if showTradeLines and not na(entryLine)
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Display DXY EMA status in top-right corner
-var table dxyTable = table.new(position.top_right, 1, 2, bgcolor=color.new(color.black, 80), border_width=1)
+var table dxyTable = table.new(position.top_right, 1, 3, bgcolor=color.new(color.black, 70), border_width=1, border_color=color.gray)
 
-if barstate.islast and showDxyStatus and enableDxyConfluence
-    dxyStatusText = dxyBearish ? "DXY: Bearish ↓" : dxyBullish ? "DXY: Bullish ↑" : "DXY: Neutral"
-    dxyStatusColor = dxyBearish ? color.red : dxyBullish ? color.green : color.gray
-    confluenceText = dxyBearish ? "EUR Buy OK ✓" : dxyBullish ? "EUR Sell OK ✓" : "Waiting..."
+// Always update table on last bar when DXY confluence is enabled
+if showDxyStatus and enableDxyConfluence
+    // Header
+    table.cell(dxyTable, 0, 0, "DXY Confluence", text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 50))
     
-    table.cell(dxyTable, 0, 0, dxyStatusText, text_color=dxyStatusColor, text_size=size.small)
-    table.cell(dxyTable, 0, 1, confluenceText, text_color=color.white, text_size=size.tiny)
+    // DXY Status
+    dxyStatusText = dxyBearish ? "↓ Bearish" : dxyBullish ? "↑ Bullish" : "— Neutral"
+    dxyStatusColor = dxyBearish ? color.red : dxyBullish ? color.green : color.gray
+    table.cell(dxyTable, 0, 1, dxyStatusText, text_color=dxyStatusColor, text_size=size.normal, bgcolor=color.new(color.black, 80))
+    
+    // EUR Confluence Status
+    confluenceText = dxyBearish ? "EUR BUY ✓" : dxyBullish ? "EUR SELL ✓" : "Waiting..."
+    confluenceColor = dxyBearish ? color.lime : dxyBullish ? color.red : color.gray
+    table.cell(dxyTable, 0, 2, confluenceText, text_color=confluenceColor, text_size=size.small, bgcolor=color.new(color.black, 80))
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MACD + EMA VISUAL INDICATORS
