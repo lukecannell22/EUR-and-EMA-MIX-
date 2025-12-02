@@ -1,6 +1,13 @@
 //@version=6
 import TradingView/ta/8
-strategy("EURUSD CVD T3+ SCALPING", overlay=true, pyramiding=0, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, max_labels_count=500)
+strategy("EURUSD CVD + MACD EMA Combined Strategy", overlay=true, pyramiding=0, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, max_labels_count=500)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMBINED STRATEGY: EUR CVD Scanner + MACD + EMA Cross
+// This script combines:
+// 1. EUR CVD Scanner with session tracking, divergences, and trade management
+// 2. MACD + EMA Cross indicator with Golden/Death Cross signals
+// ═══════════════════════════════════════════════════════════════════════════
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SESSION CONFIGURATION
@@ -27,11 +34,11 @@ previousDayWidth = input.int(1, "Previous Day Line Width", minval=1, maxval=5, g
 previousDayStyle = input.string("Dashed", "Previous Day Line Style", options=["Solid", "Dashed", "Dotted"], group=supportResistanceGroup, tooltip="Choose line style for previous day high/low")
 showPreviousDayLabels = input.bool(true, "Show YH/YL Labels", group=supportResistanceGroup, tooltip="Display 'YH' (Yesterday High) and 'YL' (Yesterday Low) labels on the lines")
 
-showCurrentWeekHL = input.bool(false, "Show Current Week High/Low (WH/WL)", group=supportResistanceGroup, tooltip="Display horizontal lines marking this week's current high and low levels")
+showCurrentWeekHL = input.bool(true, "Show Current Week High/Low (WH/WL)", group=supportResistanceGroup, tooltip="Display horizontal lines marking this week's current high and low levels")
 currentWeekColor = input.color(color.new(color.olive, 0), "Current Week Line Color", group=supportResistanceGroup, tooltip="Customize the color of current week high/low lines (default: olive)")
 currentWeekWidth = input.int(1, "Current Week Line Width", minval=1, maxval=5, group=supportResistanceGroup, tooltip="Set line thickness for current week lines (1=thin, 5=thick)")
 currentWeekStyle = input.string("Dashed", "Current Week Line Style", options=["Solid", "Dashed", "Dotted"], group=supportResistanceGroup, tooltip="Choose line style for current week high/low")
-showCurrentWeekLabels = input.bool(false, "Show WH/WL Labels", group=supportResistanceGroup, tooltip="Display 'WH' (Week High) and 'WL' (Week Low) labels on the lines")
+showCurrentWeekLabels = input.bool(true, "Show WH/WL Labels", group=supportResistanceGroup, tooltip="Display 'WH' (Week High) and 'WL' (Week Low) labels on the lines")
 
 showPreviousWeekHL = input.bool(true, "Show Previous Week High/Low (PWH/PWL)", group=supportResistanceGroup, tooltip="Display horizontal lines marking last week's high and low levels - important weekly support/resistance")
 previousWeekColor = input.color(color.orange, "Previous Week Line Color", group=supportResistanceGroup, tooltip="Customize the color of previous week high/low lines (default: orange)")
@@ -54,11 +61,11 @@ divergenceDetectorGroup = "Divergence Detectors"
 enableDivergence1 = input.bool(true, "Enable Divergence Detector 1 (Fast)", group=divergenceDetectorGroup, tooltip="Fast detector uses short pivot length for quicker divergence signals. Best for scalping and short-term trading")
 pivotLength1 = input.int(2, "Pivot Length 1", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 5 to 2 for faster detection (60% faster). Checks 2 bars left + 2 bars right = 5 bar window.")
 enableDivergence2 = input.bool(true, "Enable Divergence Detector 2 (Medium)", group=divergenceDetectorGroup, tooltip="Medium detector balances speed and reliability. Good for intraday trading")
-pivotLength2 = input.int(5, "Pivot Length 2", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 10 to 5 for faster detection (50% faster). Checks 5 bars left + 5 bars right = 11 bar window.")
+pivotLength2 = input.int(6, "Pivot Length 2", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 10 to 6 for faster detection. Checks 6 bars left + 6 bars right = 13 bar window.")
 enableDivergence3 = input.bool(false, "Enable Divergence Detector 3 (Slow)", group=divergenceDetectorGroup, tooltip="Slow detector uses longer pivot length for more reliable signals. Best for swing trading (disabled by default)")
 pivotLength3 = input.int(10, "Pivot Length 3", minval=2, group=divergenceDetectorGroup, tooltip="Reduced from 15 to 10 for faster detection (33% faster). Checks 10 bars left + 10 bars right = 21 bar window.")
 enableLiveDivergence = input.bool(true, "Enable Live Divergence Detection", group=divergenceDetectorGroup, tooltip="Show potential divergences in real-time without waiting for pivot confirmation. Purely visual - does not affect strategy entries.")
-liveDivLookback = input.int(20, "Live Divergence Lookback", minval=5, maxval=100, group=divergenceDetectorGroup, tooltip="Number of bars to look back for CVD/price extremes in live divergence detection. Higher values catch more divergences but may produce more signals.")
+liveDivLookback = input.int(5, "Live Divergence Lookback", minval=5, maxval=100, group=divergenceDetectorGroup, tooltip="Number of bars to look back for CVD/price extremes in live divergence detection. Higher values catch more divergences but may produce more signals.")
 
 // Live Divergence Display Settings
 liveDivDisplayGroup = "Live Divergence Display"
@@ -108,7 +115,7 @@ exhaustionBearLabel = input.string("Exhaust Bear", "Exhaustion Bearish Label", g
 
 // General Divergence Display
 divDisplayGroup = "Divergence Display"
-showDivergenceLabels = input.bool(true, "Show Divergence Labels", group=divDisplayGroup, tooltip="Display text labels on divergences (e.g., 'Classic Bull', 'Absorb Bear')")
+showDivergenceLabels = input.bool(false, "Show Divergence Labels", group=divDisplayGroup, tooltip="Display text labels on divergences (e.g., 'Classic Bull', 'Absorb Bear')")
 showDivergenceLines = input.bool(true, "Show Divergence Lines", group=divDisplayGroup, tooltip="Display lines connecting the divergence pivot points")
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,13 +125,13 @@ showDivergenceLines = input.bool(true, "Show Divergence Lines", group=divDisplay
 tradeGroup = "Trade Management"
 stopLossPips = input.float(5.0, "Stop Loss (Pips)", minval=0.1, step=0.1, group=tradeGroup, tooltip="Default stop loss distance in pips. Strategy calculates position size based on this and risk percent")
 riskPercent = input.float(1.0, "Risk % of Equity", minval=0.1, step=0.1, group=tradeGroup, tooltip="Percentage of equity to risk per trade")
-tp1Pips = input.float(15.0, "TP1 (Pips)", minval=1, step=1, group=tradeGroup)
-enableTP2 = input.bool(true, "Enable TP2", group=tradeGroup)
-tp2Pips = input.float(30.0, "TP2 (Pips)", minval=1, step=1, group=tradeGroup)
-enableTP3 = input.bool(true, "Enable TP3", group=tradeGroup)
-tp3Pips = input.float(50.0, "TP3 (Pips)", minval=1, step=1, group=tradeGroup)
-tp1Percent = input.float(33.0, "TP1 Exit %", minval=1, maxval=100, group=tradeGroup)
-tp2ExitPercent = input.float(50.0, "TP2 Exit %", minval=1, maxval=100, group=tradeGroup, tooltip="Percentage to exit at TP2 of remaining position after TP1")
+tp1Pips = input.float(10.0, "TP1 (Pips)", minval=1, step=1, group=tradeGroup)
+enableTP2 = input.bool(false, "Enable TP2", group=tradeGroup)
+tp2Pips = input.float(20.0, "TP2 (Pips)", minval=1, step=1, group=tradeGroup)
+enableTP3 = input.bool(false, "Enable TP3", group=tradeGroup)
+tp3Pips = input.float(30.0, "TP3 (Pips)", minval=1, step=1, group=tradeGroup)
+tp1Percent = input.float(100.0, "TP1 Exit %", minval=1, maxval=100, group=tradeGroup)
+tp2ExitPercent = input.float(25.0, "TP2 Exit %", minval=1, maxval=100, group=tradeGroup, tooltip="Percentage to exit at TP2 of remaining position after TP1")
 moveToBreakevenAfterTP1 = input.bool(true, "Move to Breakeven after TP1", group=tradeGroup)
 moveToBreakevenAfterTP2 = input.bool(false, "Move to Breakeven after TP2", group=tradeGroup)
 
@@ -133,41 +140,22 @@ moveToBreakevenAfterTP2 = input.bool(false, "Move to Breakeven after TP2", group
 // ═══════════════════════════════════════════════════════════════════════════
 
 signalGroup = "Entry Signals"
-useSignal1 = input.bool(true, "Enable Full Entry Signal", group=signalGroup, tooltip="Full entry requires all conditions: liquidity sweep, divergence, engulfing, kill zone, and day filter")
-signal1Label = input.string("Full Entry", "Full Entry Label", group=signalGroup, tooltip="Custom label text for full entry signals on the chart")
-signal1RequireLiqSweep = input.bool(true, "Require Liquidity Sweep", group=signalGroup, inline="full1", tooltip="Full entry must include Asia high/low liquidity sweep")
-signal1RequireDivergence = input.bool(true, "Require Divergence", group=signalGroup, inline="full2", tooltip="Full entry must include price/CVD divergence")
-signal1RequireEngulfing = input.bool(true, "Require Engulfing", group=signalGroup, inline="full3", tooltip="Full entry must include engulfing/pin bar candle pattern")
-signal1RequireKillZone = input.bool(true, "Require Kill Zone", group=signalGroup, inline="full4", tooltip="Full entry must occur during London or NY kill zone")
-signal1RequireDayFilter = input.bool(true, "Require Day Filter", group=signalGroup, inline="full5", tooltip="Full entry only on enabled trading days")
-
-useSignal2 = input.bool(true, "Enable Simple Entry Signal", group=signalGroup, tooltip="Simple entry requires fewer conditions: divergence, engulfing, kill zone, and day filter (no liquidity sweep required)")
-signal2Label = input.string("Simple Entry", "Simple Entry Label", group=signalGroup, tooltip="Custom label text for simple entry signals on the chart")
-signal2RequireDivergence = input.bool(true, "Require Divergence", group=signalGroup, inline="simple1", tooltip="Simple entry must include price/CVD divergence")
-signal2RequireEngulfing = input.bool(true, "Require Engulfing", group=signalGroup, inline="simple2", tooltip="Simple entry must include engulfing/pin bar candle pattern")
-signal2RequireKillZone = input.bool(true, "Require Kill Zone", group=signalGroup, inline="simple3", tooltip="Simple entry must occur during London or NY kill zone")
-signal2RequireDayFilter = input.bool(true, "Require Day Filter", group=signalGroup, inline="simple4", tooltip="Simple entry only on enabled trading days")
 
 candleGroup = "Candle Pattern Selection"
-candleMode = input.string("Engulfing Only", "Entry Candle Type", options=["Engulfing Only", "Pin Bar Only", "Both"], group=candleGroup, tooltip="Choose which candle patterns to use for entries: engulfing, pin bars, or both")
+candleMode = input.string("Engulfing Only", "Entry Candle Type", options=["Engulfing Only"], group=candleGroup, tooltip="Engulfing candle patterns for entries")
 useBullishEngulfing = input.bool(true, "Use Bullish Engulfing", group=candleGroup, tooltip="Enable bullish engulfing patterns (bullish candle fully engulfs previous bearish candle)")
 useBearishEngulfing = input.bool(true, "Use Bearish Engulfing", group=candleGroup, tooltip="Enable bearish engulfing patterns (bearish candle fully engulfs previous bullish candle)")
-useBullishPinBar = input.bool(true, "Use Bullish Pin Bar", group=candleGroup, tooltip="Enable bullish pin bars (long lower wick, small body near high)")
-useBearishPinBar = input.bool(true, "Use Bearish Pin Bar", group=candleGroup, tooltip="Enable bearish pin bars (long upper wick, small body near low)")
 
 // Entry Candle Indicator Settings
 candleIndicatorGroup = "Entry Candle Indicators"
 showEngulfingIndicator = input.bool(true, "Show Engulfing Candles", group=candleIndicatorGroup, tooltip="Display labels on all engulfing candles found on the chart (not just entry signals)")
-showPinBarIndicator = input.bool(true, "Show Pin Bars", group=candleIndicatorGroup, tooltip="Display labels on all pin bar candles found on the chart (not just entry signals)")
 candleTimeFilter = input.string("All Times", "Show During", options=["All Times", "Kill Zones Only", "Custom Time Range"], group=candleIndicatorGroup, tooltip="Filter when to show candle pattern indicators")
 candleCustomSession = input.session("0000-2359", "Custom Time Range", group=candleIndicatorGroup, tooltip="Custom time range for showing candle indicators. Only used when 'Show During' is set to 'Custom Time Range'. Use the time picker to adjust")
 
 // Entry Candle Label Customization
 labelTextGroup = "Entry Candle Label Text"
-bullishEngulfingText = input.string("BE ↑", "Bullish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bullish engulfing candle labels")
-bearishEngulfingText = input.string("BE ↓", "Bearish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bearish engulfing candle labels")
-bullishPinBarText = input.string("PIN ↑", "Bullish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bullish pin bar candle labels")
-bearishPinBarText = input.string("PIN ↓", "Bearish Pin Bar Label", group=labelTextGroup, tooltip="Custom text for bearish pin bar candle labels")
+bullishEngulfingText = input.string("", "Bullish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bullish engulfing candle labels")
+bearishEngulfingText = input.string("", "Bearish Engulfing Label", group=labelTextGroup, tooltip="Custom text for bearish engulfing candle labels")
 
 visualGroup = "Visual Settings"
 showTradeLines = input.bool(true, "Show Trade Lines (Entry/SL/TP)", group=visualGroup, tooltip="Display horizontal lines showing entry price, stop loss, and take profit levels when trades are active")
@@ -186,7 +174,7 @@ tradeLineWidth = input.int(2, "Trade Lines Width", minval=1, maxval=5, group=lin
 // Kill Zone Settings - Trading Windows
 kzGroup = "Kill Zone Trading Windows"
 enableLondonKZ = input.bool(true, "Enable London Kill Zone", group=kzGroup, tooltip="Enable trading during London Kill Zone (typically 3AM-6AM ET when London market opens)")
-londonKZSession = input.session("0300-0600", "London KZ Time Range", group=kzGroup, tooltip="Define London Kill Zone time range. Default: 3AM-6AM ET. Use the time picker to adjust session times")
+londonKZSession = input.session("0200-0600", "London KZ Time Range", group=kzGroup, tooltip="Define London Kill Zone time range. Default: 2AM-6AM ET. Use the time picker to adjust session times")
 enableNYKZ = input.bool(false, "Enable New York Kill Zone", group=kzGroup, tooltip="Enable trading during New York Kill Zone (typically 9AM-12PM ET when NY market opens)")
 nyKZSession = input.session("0900-1200", "NY KZ Time Range", group=kzGroup, tooltip="Define New York Kill Zone time range. Default: 9AM-12PM ET. Use the time picker to adjust session times")
 
@@ -198,7 +186,7 @@ tradeWed = input.bool(true, "Wednesday", group=dayGroup, tooltip="Enable trading
 tradeThu = input.bool(true, "Thursday", group=dayGroup, tooltip="Enable trading on Thursdays")
 tradeFri = input.bool(true, "Friday", group=dayGroup, tooltip="Enable trading on Fridays")
 tradeSat = input.bool(false, "Saturday", group=dayGroup, tooltip="Enable trading on Saturdays (typically low liquidity)")
-tradeSun = input.bool(false, "Sunday", group=dayGroup, tooltip="Enable trading on Sundays (typically low liquidity)")
+tradeSun = input.bool(true, "Sunday", group=dayGroup, tooltip="Enable trading on Sundays")
 
 // Additional Session Settings
 additionalSessionGroup = "Additional Trading Sessions"
@@ -206,6 +194,52 @@ enableTokyo = input.bool(false, "Enable Tokyo Session", group=additionalSessionG
 tokyoSession = input.session("0000-0900", "Tokyo Session", group=additionalSessionGroup, tooltip="Define Tokyo session time range. Default: 12AM-9AM ET. Use the time picker to adjust session times")
 enableSydney = input.bool(false, "Enable Sydney Session", group=additionalSessionGroup, tooltip="Enable Sydney session box display (typically 9PM-6AM ET)")
 sydneySession = input.session("2100-0600", "Sydney Session", group=additionalSessionGroup, tooltip="Define Sydney session time range. Default: 9PM-6AM ET. Use the time picker to adjust session times")
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA CROSS SETTINGS (Combined from MACD + EMA Cross indicator)
+// ═══════════════════════════════════════════════════════════════════════════
+
+macdEmaGroup = "MACD + EMA Cross Settings"
+enableMacdEma = input.bool(true, "Enable MACD + EMA Cross", group=macdEmaGroup, tooltip="Enable the MACD + EMA Cross indicator overlay and signals")
+showEmaLines = input.bool(true, "Show EMA Lines", group=macdEmaGroup, tooltip="Display EMA lines on chart (Momentum, Fast, Slow, Direction)")
+showEmaCloud = input.bool(true, "Show EMA Cloud", group=macdEmaGroup, tooltip="Display cloud fill between Fast and Slow EMA")
+showMacdEmaCross = input.bool(true, "Show EMA Cross Marker", group=macdEmaGroup, tooltip="Display cross marker when Fast EMA crosses Slow EMA")
+showMacdEmaSignals = input.bool(true, "Show Buy/Sell Signals", group=macdEmaGroup, tooltip="Display B/S labels when Golden/Death Cross occurs with MACD confirmation")
+
+// EMA Settings
+emaSettingsGroup = "EMA Settings"
+emaFastLength = input.int(20, "Fast EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Fast EMA (default: 20)")
+emaSlowLength = input.int(50, "Slow EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Slow EMA (default: 50)")
+emaDirLength = input.int(238, "Direction EMA Period", minval=1, group=emaSettingsGroup, tooltip="Period for Direction EMA (default: 238)")
+
+// EMA Colors
+emaColorsGroup = "EMA Colors"
+emaFastColor = input.color(color.green, "Fast EMA Color", group=emaColorsGroup)
+emaSlowColor = input.color(color.red, "Slow EMA Color", group=emaColorsGroup)
+emaDirColor = input.color(color.blue, "Direction EMA Color", group=emaColorsGroup)
+emaCloudBullColor = input.color(color.new(color.green, 80), "Bullish Cloud Color", group=emaColorsGroup)
+emaCloudBearColor = input.color(color.new(color.red, 80), "Bearish Cloud Color", group=emaColorsGroup)
+
+// MACD Settings
+macdSettingsGroup = "MACD Settings"
+macdFastLength = input.int(12, "MACD Fast Length", minval=1, group=macdSettingsGroup, tooltip="Fast EMA period for MACD calculation (default: 12)")
+macdSlowLength = input.int(26, "MACD Slow Length", minval=1, group=macdSettingsGroup, tooltip="Slow EMA period for MACD calculation (default: 26)")
+macdSignalLength = input.int(9, "MACD Signal Smoothing", minval=1, maxval=50, group=macdSettingsGroup, tooltip="Signal line smoothing period (default: 9)")
+
+// MACD + EMA Entry Signal Settings
+macdEmaSignalGroup = "MACD + EMA Entry Signal"
+useSignal3 = input.bool(true, "Enable MACD + EMA Entry Signal", group=macdEmaSignalGroup, tooltip="Use MACD + EMA Golden/Death Cross as entry signal")
+signal3Label = input.string("Entry", "Signal Label", group=macdEmaSignalGroup, tooltip="Custom label for MACD + EMA entry signals")
+signal3RequireKillZone = input.bool(false, "Require Kill Zone", group=macdEmaSignalGroup, tooltip="MACD + EMA signal must occur during London or NY kill zone")
+signal3RequireDayFilter = input.bool(true, "Require Day Filter", group=macdEmaSignalGroup, tooltip="MACD + EMA signal only on enabled trading days")
+
+// DXY Confluence Settings
+dxyConfluenceGroup = "DXY Confluence Confirmation"
+enableDxyConfluence = input.bool(true, "Enable DXY Confirmation", group=dxyConfluenceGroup, tooltip="Require DXY EMAs to be opposite to EUR for entry confirmation. For bullish EUR signal, DXY should be bearish (Fast EMA below Slow EMA) and vice versa.")
+dxySymbol = input.symbol("TVC:DXY", "DXY Symbol", group=dxyConfluenceGroup, tooltip="Symbol for US Dollar Index. Common options: TVC:DXY, CURRENCYCOM:DXY, CAPITALCOM:DXY")
+dxyFastLength = input.int(20, "DXY Fast EMA Period", minval=1, group=dxyConfluenceGroup, tooltip="Period for DXY Fast EMA (default: 20 - same as EUR)")
+dxySlowLength = input.int(50, "DXY Slow EMA Period", minval=1, group=dxyConfluenceGroup, tooltip="Period for DXY Slow EMA (default: 50 - same as EUR)")
+showDxyStatus = input.bool(true, "Show DXY Status on Chart", group=dxyConfluenceGroup, tooltip="Display DXY EMA status indicator in top-right corner")
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
@@ -647,6 +681,54 @@ if barstate.islast and cumVol == 0
     runtime.error("The data vendor doesn't provide volume data for this symbol.")
 
 // ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// EMA Calculations
+emaFast = ta.ema(close, emaFastLength)
+emaSlow = ta.ema(close, emaSlowLength)
+emaDirection = ta.ema(close, emaDirLength)
+
+// EMA Cross Detection - Directional crosses
+emaCrossOver = ta.crossover(emaFast, emaSlow)   // Fast crosses above Slow (bullish)
+emaCrossUnder = ta.crossunder(emaFast, emaSlow) // Fast crosses below Slow (bearish)
+emaCross = emaCrossOver or emaCrossUnder        // Any cross (for visual marker)
+
+// MACD Calculations
+macdFastMa = ta.ema(close, macdFastLength)
+macdSlowMa = ta.ema(close, macdSlowLength)
+macdLine = macdFastMa - macdSlowMa
+macdSignalLine = ta.ema(macdLine, macdSignalLength)
+macdHist = macdLine - macdSignalLine
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DXY CONFLUENCE CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Get DXY EMA values directly from DXY chart (calculated on DXY's data)
+// This ensures EMAs are calculated using DXY's historical data, not EUR's
+dxyFastEma = request.security(dxySymbol, timeframe.period, ta.ema(close, dxyFastLength))
+dxySlowEma = request.security(dxySymbol, timeframe.period, ta.ema(close, dxySlowLength))
+
+// DXY EMA relationship
+// DXY Bearish: Fast EMA is BELOW Slow EMA (good for EUR bullish)
+// DXY Bullish: Fast EMA is ABOVE Slow EMA (good for EUR bearish)
+dxyBearish = dxyFastEma < dxySlowEma
+dxyBullish = dxyFastEma > dxySlowEma
+
+// DXY Confluence Check
+// For EUR bullish signal: DXY should be bearish (opposite)
+// For EUR bearish signal: DXY should be bullish (opposite)
+dxyConfirmsBullish = not enableDxyConfluence or dxyBearish  // If disabled, always true
+dxyConfirmsBearish = not enableDxyConfluence or dxyBullish  // If disabled, always true
+
+// Golden/Death Cross with MACD Confirmation AND DXY Confluence
+// Golden Cross: Fast EMA crosses ABOVE Slow EMA AND MACD is bullish AND DXY is bearish
+goldenBuy = emaCrossOver and macdLine > macdSignalLine and dxyConfirmsBullish
+// Death Cross: Fast EMA crosses BELOW Slow EMA AND MACD is bearish AND DXY is bullish
+goldenSell = emaCrossUnder and macdLine < macdSignalLine and dxyConfirmsBearish
+
+// ═══════════════════════════════════════════════════════════════════════════
 // PIVOT DETECTION (MULTIPLE TIMEFRAMES)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -967,53 +1049,9 @@ bullishEngulfing = close > open and close[1] < open[1] and close >= open[1] and 
 // Bearish Engulfing - current candle is bearish and body engulfs previous candle's body  
 bearishEngulfing = close < open and close[1] > open[1] and close <= open[1] and open >= close[1]
 
-// Pin Bar (High/Low Test) Detection
-// Bullish Pin Bar - long lower wick, small body, closes near high (tests low and rejects)
-bodySize = math.abs(close - open)
-upperWick = high - math.max(close, open)
-lowerWick = math.min(close, open) - low
-totalRange = high - low
-
-bullishPinBar = totalRange > 0 and lowerWick > (totalRange * 0.6) and bodySize < (totalRange * 0.3) and close > open and upperWick < (totalRange * 0.3)
-
-// Bearish Pin Bar - long upper wick, small body, closes near low (tests high and rejects)
-bearishPinBar = totalRange > 0 and upperWick > (totalRange * 0.6) and bodySize < (totalRange * 0.3) and close < open and lowerWick < (totalRange * 0.3)
-
-// Bullish confirmation candle based on mode
-bullishConfirmation = switch candleMode
-    "Engulfing Only" => bullishEngulfing
-    "Pin Bar Only" => bullishPinBar
-    "Both" => (useBullishEngulfing and bullishEngulfing) or (useBullishPinBar and bullishPinBar)
-    => false
-
-// Bearish confirmation candle based on mode
-bearishConfirmation = switch candleMode
-    "Engulfing Only" => bearishEngulfing
-    "Pin Bar Only" => bearishPinBar
-    "Both" => (useBearishEngulfing and bearishEngulfing) or (useBearishPinBar and bearishPinBar)
-    => false
-
-// ═══════════════════════════════════════════════════════════════════════════
-// ASIA SESSION SWEEP DETECTION
-// ═══════════════════════════════════════════════════════════════════════════
-
-var bool asiaLowSwept = false
-var bool asiaHighSwept = false
-
-// Sweep of Asia Low: price goes below and closes back above
-if not na(asiaLow)
-    if low < asiaLow and close > asiaLow
-        asiaLowSwept := true
-
-// Sweep of Asia High: price goes above and closes back below
-if not na(asiaHigh)
-    if high > asiaHigh and close < asiaHigh
-        asiaHighSwept := true
-
-// Reset sweep flags at start of new Asia session
-if asiaSessionStarted
-    asiaLowSwept := false
-    asiaHighSwept := false
+// Bullish/Bearish confirmation using engulfing only
+bullishConfirmation = bullishEngulfing
+bearishConfirmation = bearishEngulfing
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ENTRY LOGIC
@@ -1023,63 +1061,28 @@ if asiaSessionStarted
 tradingAllowed = isDayEnabled()
 inKillZone = isLondonKZWindow or isNYKZWindow or isInAdditionalSession
 
-// Modular Full Entry Signal (Signal 1)
-signal1LongConditions = useSignal1
-signal1ShortConditions = useSignal1
+// MACD + EMA Entry Signal
+signal3LongConditions = useSignal3 and enableMacdEma and goldenBuy
+signal3ShortConditions = useSignal3 and enableMacdEma and goldenSell
 
-if signal1RequireLiqSweep
-    signal1LongConditions := signal1LongConditions and asiaLowSwept
-    signal1ShortConditions := signal1ShortConditions and asiaHighSwept
+if signal3RequireKillZone
+    signal3LongConditions := signal3LongConditions and inKillZone
+    signal3ShortConditions := signal3ShortConditions and inKillZone
 
-if signal1RequireDivergence
-    signal1LongConditions := signal1LongConditions and hasBullishDivergence
-    signal1ShortConditions := signal1ShortConditions and hasBearishDivergence
+if signal3RequireDayFilter
+    signal3LongConditions := signal3LongConditions and tradingAllowed
+    signal3ShortConditions := signal3ShortConditions and tradingAllowed
 
-if signal1RequireEngulfing
-    signal1LongConditions := signal1LongConditions and bullishConfirmation
-    signal1ShortConditions := signal1ShortConditions and bearishConfirmation
+signal3Long = signal3LongConditions
+signal3Short = signal3ShortConditions
 
-if signal1RequireKillZone
-    signal1LongConditions := signal1LongConditions and inKillZone
-    signal1ShortConditions := signal1ShortConditions and inKillZone
+// Entry signals (MACD + EMA only)
+longEntry = signal3Long
+shortEntry = signal3Short
 
-if signal1RequireDayFilter
-    signal1LongConditions := signal1LongConditions and tradingAllowed
-    signal1ShortConditions := signal1ShortConditions and tradingAllowed
-
-signal1Long = signal1LongConditions
-signal1Short = signal1ShortConditions
-
-// Modular Simple Entry Signal (Signal 2)
-signal2LongConditions = useSignal2
-signal2ShortConditions = useSignal2
-
-if signal2RequireDivergence
-    signal2LongConditions := signal2LongConditions and hasBullishDivergence
-    signal2ShortConditions := signal2ShortConditions and hasBearishDivergence
-
-if signal2RequireEngulfing
-    signal2LongConditions := signal2LongConditions and bullishConfirmation
-    signal2ShortConditions := signal2ShortConditions and bearishConfirmation
-
-if signal2RequireKillZone
-    signal2LongConditions := signal2LongConditions and inKillZone
-    signal2ShortConditions := signal2ShortConditions and inKillZone
-
-if signal2RequireDayFilter
-    signal2LongConditions := signal2LongConditions and tradingAllowed
-    signal2ShortConditions := signal2ShortConditions and tradingAllowed
-
-signal2Long = signal2LongConditions
-signal2Short = signal2ShortConditions
-
-// Combined entry signals
-longEntry = signal1Long or signal2Long
-shortEntry = signal1Short or signal2Short
-
-// Debug: Show when Signal 2 entries are triggered
-plotshape(signal2Long, "Signal 2 Long", shape.triangleup, location.belowbar, color.new(color.lime, 0), size=size.tiny)
-plotshape(signal2Short, "Signal 2 Short", shape.triangledown, location.abovebar, color.new(color.red, 0), size=size.tiny)
+// Show when MACD + EMA entries are triggered
+plotshape(signal3Long and showMacdEmaSignals, "MACD+EMA Buy", shape.labelup, location.belowbar, color.yellow, text="B", textcolor=color.black, size=size.small)
+plotshape(signal3Short and showMacdEmaSignals, "MACD+EMA Sell", shape.labeldown, location.abovebar, color.orange, text="S", textcolor=color.black, size=size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TRADE MANAGEMENT
@@ -1150,7 +1153,6 @@ if longEntry and strategy.position_size == 0
     
     // Reset divergence flags after entry
     hasBullishDivergence := false
-    asiaLowSwept := false
 
 // Short Entry
 if shortEntry and strategy.position_size == 0
@@ -1199,7 +1201,6 @@ if shortEntry and strategy.position_size == 0
     
     // Reset divergence flags after entry
     hasBearishDivergence := false
-    asiaHighSwept := false
 
 // Extend trade lines each bar (up to max hours)
 if showTradeLines and not na(entryLine) and strategy.position_size != 0
@@ -1321,6 +1322,49 @@ if showTradeLines and not na(entryLine)
 // VISUAL INDICATORS
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════
+// DXY STATUS INDICATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Display DXY EMA status in top-right corner
+var table dxyTable = table.new(position.top_right, 1, 4, bgcolor=color.new(color.black, 70), border_width=1, border_color=color.gray)
+
+// Always update table on last bar when DXY confluence is enabled
+if showDxyStatus and enableDxyConfluence
+    // Header
+    table.cell(dxyTable, 0, 0, "DXY Confluence", text_color=color.white, text_size=size.small, bgcolor=color.new(color.gray, 50))
+    
+    // DXY EMA Values
+    dxyEmaText = "Fast: " + str.tostring(dxyFastEma, "#.###") + " | Slow: " + str.tostring(dxySlowEma, "#.###")
+    table.cell(dxyTable, 0, 1, dxyEmaText, text_color=color.silver, text_size=size.tiny, bgcolor=color.new(color.black, 80))
+    
+    // DXY Status
+    dxyStatusText = dxyBearish ? "↓ Bearish (Fast < Slow)" : dxyBullish ? "↑ Bullish (Fast > Slow)" : "— Neutral"
+    dxyStatusColor = dxyBearish ? color.red : dxyBullish ? color.green : color.gray
+    table.cell(dxyTable, 0, 2, dxyStatusText, text_color=dxyStatusColor, text_size=size.small, bgcolor=color.new(color.black, 80))
+    
+    // EUR Confluence Status
+    confluenceText = dxyBearish ? "EUR BUY ✓" : dxyBullish ? "EUR SELL ✓" : "Waiting..."
+    confluenceColor = dxyBearish ? color.lime : dxyBullish ? color.red : color.gray
+    table.cell(dxyTable, 0, 3, confluenceText, text_color=confluenceColor, text_size=size.small, bgcolor=color.new(color.black, 80))
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA VISUAL INDICATORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Plot EMA lines if enabled
+emaFastPlot = plot(enableMacdEma and showEmaLines ? emaFast : na, title="EMA Fast", color=emaFastColor, linewidth=2)
+emaSlowPlot = plot(enableMacdEma and showEmaLines ? emaSlow : na, title="EMA Slow", color=emaSlowColor, linewidth=2)
+plot(enableMacdEma and showEmaLines ? emaDirection : na, title="EMA Direction", color=emaDirColor, linewidth=2)
+
+// Plot EMA Cross markers - Green for Golden Cross (bullish), Red for Death Cross (bearish)
+plot(enableMacdEma and showMacdEmaCross and emaCrossOver ? emaFast : na, title="Golden Cross", style=plot.style_cross, color=color.lime, linewidth=3)
+plot(enableMacdEma and showMacdEmaCross and emaCrossUnder ? emaFast : na, title="Death Cross", style=plot.style_cross, color=color.red, linewidth=3)
+
+// EMA Cloud fill
+cloudColor = emaFast > emaSlow ? emaCloudBullColor : emaCloudBearColor
+fill(emaFastPlot, emaSlowPlot, color=enableMacdEma and showEmaCloud ? cloudColor : na, title="EMA Cloud")
+
 // Plot entry signals
 plotshape(longEntry, "Long Entry", shape.triangleup, location.belowbar, color.green, size=size.small)
 plotshape(shortEntry, "Short Entry", shape.triangledown, location.abovebar, color.red, size=size.small)
@@ -1336,7 +1380,7 @@ else if candleTimeFilter == "Custom Time Range"
 else
     true
 
-// Show engulfing candles and pin bars with editable text labels
+// Show engulfing candles with editable text labels
 showEngulfingNow = showEngulfingIndicator and inCandleTimeWindow
 
 // Entry candle indicators - plotshape for Style tab customization (shape, color, size)
@@ -1348,18 +1392,6 @@ if showEngulfingNow and bullishEngulfing
 plotshape(showEngulfingNow and bearishEngulfing, "Bearish Engulfing", location=location.abovebar, size=size.small)
 if showEngulfingNow and bearishEngulfing
     label.new(bar_index, high + (high - low) * 0.002, bearishEngulfingText, style=label.style_none, textcolor=color.red, size=size.small, xloc=xloc.bar_index)
-
-showPinBarNow = showPinBarIndicator and inCandleTimeWindow
-
-// Pin bar indicators - plotshape for Style tab customization (shape, color, size)
-// Text labels are separate and use custom text from Inputs tab
-plotshape(showPinBarNow and bullishPinBar, "Bullish Pin Bar", location=location.belowbar, size=size.small)
-if showPinBarNow and bullishPinBar
-    label.new(bar_index, low - (high - low) * 0.002, bullishPinBarText, style=label.style_none, textcolor=color.blue, size=size.small, xloc=xloc.bar_index)
-
-plotshape(showPinBarNow and bearishPinBar, "Bearish Pin Bar", location=location.abovebar, size=size.small)
-if showPinBarNow and bearishPinBar
-    label.new(bar_index, high + (high - low) * 0.002, bearishPinBarText, style=label.style_none, textcolor=color.orange, size=size.small, xloc=xloc.bar_index)
 
 // Background color for Kill Zone windows
 bgcolor(isLondonKZWindow ? color.new(color.orange, 95) : na, title="London KZ Background")
@@ -1380,3 +1412,13 @@ if showCVDPane
     
 // Note: Divergence lines are now drawn directly in the divergence detection logic above
 // and persist on historical data without deletion
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MACD + EMA ALERTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Alert conditions for MACD + EMA signals
+alertcondition(goldenBuy, title="MACD+EMA Buy Signal", message="MACD+EMA Buy Signal (Golden Cross) for {{ticker}} : {{exchange}}")
+alertcondition(goldenSell, title="MACD+EMA Sell Signal", message="MACD+EMA Sell Signal (Death Cross) for {{ticker}} : {{exchange}}")
+alertcondition(signal3Long, title="Signal 3 Long Entry", message="MACD+EMA Long Entry Signal for {{ticker}} : {{exchange}}")
+alertcondition(signal3Short, title="Signal 3 Short Entry", message="MACD+EMA Short Entry Signal for {{ticker}} : {{exchange}}")
