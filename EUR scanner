@@ -233,6 +233,14 @@ signal3Label = input.string("Entry", "Signal Label", group=macdEmaSignalGroup, t
 signal3RequireKillZone = input.bool(false, "Require Kill Zone", group=macdEmaSignalGroup, tooltip="MACD + EMA signal must occur during London or NY kill zone")
 signal3RequireDayFilter = input.bool(true, "Require Day Filter", group=macdEmaSignalGroup, tooltip="MACD + EMA signal only on enabled trading days")
 
+// DXY Confluence Settings
+dxyConfluenceGroup = "DXY Confluence Confirmation"
+enableDxyConfluence = input.bool(true, "Enable DXY Confirmation", group=dxyConfluenceGroup, tooltip="Require DXY EMAs to be opposite to EUR for entry confirmation. For bullish EUR signal, DXY should be bearish (Fast EMA below Slow EMA) and vice versa.")
+dxySymbol = input.symbol("TVC:DXY", "DXY Symbol", group=dxyConfluenceGroup, tooltip="Symbol for US Dollar Index. Common options: TVC:DXY, CURRENCYCOM:DXY, CAPITALCOM:DXY")
+dxyFastLength = input.int(20, "DXY Fast EMA Period", minval=1, group=dxyConfluenceGroup, tooltip="Period for DXY Fast EMA (default: 20 - same as EUR)")
+dxySlowLength = input.int(50, "DXY Slow EMA Period", minval=1, group=dxyConfluenceGroup, tooltip="Period for DXY Slow EMA (default: 50 - same as EUR)")
+showDxyStatus = input.bool(true, "Show DXY Status on Chart", group=dxyConfluenceGroup, tooltip="Display DXY EMA status indicator in top-right corner")
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -693,11 +701,34 @@ macdLine = macdFastMa - macdSlowMa
 macdSignalLine = ta.ema(macdLine, macdSignalLength)
 macdHist = macdLine - macdSignalLine
 
-// Golden/Death Cross with MACD Confirmation
-// Golden Cross: Fast EMA crosses ABOVE Slow EMA AND MACD is bullish
-goldenBuy = emaCrossOver and macdLine > macdSignalLine
-// Death Cross: Fast EMA crosses BELOW Slow EMA AND MACD is bearish
-goldenSell = emaCrossUnder and macdLine < macdSignalLine
+// ═══════════════════════════════════════════════════════════════════════════
+// DXY CONFLUENCE CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Get DXY close price data
+dxyClose = request.security(dxySymbol, timeframe.period, close)
+
+// Calculate DXY EMAs
+dxyFastEma = ta.ema(dxyClose, dxyFastLength)
+dxySlowEma = ta.ema(dxyClose, dxySlowLength)
+
+// DXY EMA relationship
+// DXY Bearish: Fast EMA is BELOW Slow EMA (good for EUR bullish)
+// DXY Bullish: Fast EMA is ABOVE Slow EMA (good for EUR bearish)
+dxyBearish = dxyFastEma < dxySlowEma
+dxyBullish = dxyFastEma > dxySlowEma
+
+// DXY Confluence Check
+// For EUR bullish signal: DXY should be bearish (opposite)
+// For EUR bearish signal: DXY should be bullish (opposite)
+dxyConfirmsBullish = not enableDxyConfluence or dxyBearish  // If disabled, always true
+dxyConfirmsBearish = not enableDxyConfluence or dxyBullish  // If disabled, always true
+
+// Golden/Death Cross with MACD Confirmation AND DXY Confluence
+// Golden Cross: Fast EMA crosses ABOVE Slow EMA AND MACD is bullish AND DXY is bearish
+goldenBuy = emaCrossOver and macdLine > macdSignalLine and dxyConfirmsBullish
+// Death Cross: Fast EMA crosses BELOW Slow EMA AND MACD is bearish AND DXY is bullish
+goldenSell = emaCrossUnder and macdLine < macdSignalLine and dxyConfirmsBearish
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PIVOT DETECTION (MULTIPLE TIMEFRAMES)
@@ -1292,6 +1323,21 @@ if showTradeLines and not na(entryLine)
 // ═══════════════════════════════════════════════════════════════════════════
 // VISUAL INDICATORS
 // ═══════════════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DXY STATUS INDICATOR
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Display DXY EMA status in top-right corner
+var table dxyTable = table.new(position.top_right, 1, 2, bgcolor=color.new(color.black, 80), border_width=1)
+
+if barstate.islast and showDxyStatus and enableDxyConfluence
+    dxyStatusText = dxyBearish ? "DXY: Bearish ↓" : dxyBullish ? "DXY: Bullish ↑" : "DXY: Neutral"
+    dxyStatusColor = dxyBearish ? color.red : dxyBullish ? color.green : color.gray
+    confluenceText = dxyBearish ? "EUR Buy OK ✓" : dxyBullish ? "EUR Sell OK ✓" : "Waiting..."
+    
+    table.cell(dxyTable, 0, 0, dxyStatusText, text_color=dxyStatusColor, text_size=size.small)
+    table.cell(dxyTable, 0, 1, confluenceText, text_color=color.white, text_size=size.tiny)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MACD + EMA VISUAL INDICATORS
